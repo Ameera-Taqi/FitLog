@@ -5,7 +5,7 @@ export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "en";
 
 export type Theme = "light" | "dark";
-export const DEFAULT_THEME: Theme = "light";
+export const DEFAULT_THEME: Theme = "dark";
 
 export const LANG_COOKIE = "pref-lang";
 export const THEME_COOKIE = "pref-theme";

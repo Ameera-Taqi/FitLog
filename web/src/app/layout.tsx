@@ -1,9 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { Outfit } from "next/font/google";
 import "./globals.css";
 import { getLocale, getTheme } from "@/lib/i18n/server";
 import { dirFor } from "@/lib/i18n/config";
 import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import { ThemeProvider } from "@/lib/i18n/ThemeProvider";
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "FitLog — Gym Tracker",
@@ -11,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#059669",
+  themeColor: "#12141A",
   width: "device-width",
   initialScale: 1,
 };
@@ -24,8 +31,13 @@ export default async function RootLayout({
   const [locale, theme] = await Promise.all([getLocale(), getTheme()]);
 
   return (
-    <html lang={locale} dir={dirFor(locale)} className={theme === "dark" ? "dark" : ""} suppressHydrationWarning>
-      <body>
+    <html
+      lang={locale}
+      dir={dirFor(locale)}
+      className={`${outfit.variable} ${theme === "dark" ? "dark" : ""}`}
+      suppressHydrationWarning
+    >
+      <body className="font-sans">
         <ThemeProvider theme={theme}>
           <I18nProvider locale={locale}>{children}</I18nProvider>
         </ThemeProvider>

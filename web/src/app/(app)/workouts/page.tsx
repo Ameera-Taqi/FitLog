@@ -63,11 +63,16 @@ export default async function WorkoutsPage({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-ink-900">{t("workouts.title")}</h1>
-          <p className="text-sm text-ink-500">
-            {workouts.length} {workouts.length === 1 ? t("workouts.session") : t("workouts.sessions")}
-          </p>
+        <div className="flex items-center gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-500/15 text-brand-400">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6.5 6.5v11M4 9v6M17.5 6.5v11M20 9v6M6.5 12h11" /></svg>
+          </span>
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-ink-900">{t("workouts.title")}</h1>
+            <p className="text-sm text-ink-500">
+              {workouts.length} {workouts.length === 1 ? t("workouts.session") : t("workouts.sessions")}
+            </p>
+          </div>
         </div>
         <Link href="/workouts/new" className="btn-primary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
@@ -78,7 +83,7 @@ export default async function WorkoutsPage({
       <FilterBar />
 
       {error && (
-        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 ring-1 ring-red-100">
+        <p className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-400 ring-1 ring-red-500/20">
           {t("workouts.loadError")} {error.message}
         </p>
       )}
@@ -86,10 +91,10 @@ export default async function WorkoutsPage({
       {workouts.length === 0 ? (
         <div className="card p-10 text-center text-ink-500">
           {t("workouts.noMatch")}{" "}
-          <Link href="/workouts" className="font-semibold text-brand-600">{t("workouts.clearThem")}</Link>.
+          <Link href="/workouts" className="font-semibold text-brand-500">{t("workouts.clearThem")}</Link>.
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {workouts.map((w) => (
             <WorkoutCard key={w.id} workout={w} />
           ))}

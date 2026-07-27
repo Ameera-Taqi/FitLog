@@ -9,33 +9,32 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Surfaces (white in light, dark slate in dark) — CSS-variable backed.
         surface: "rgb(var(--surface) / <alpha-value>)",
         surface2: "rgb(var(--surface-2) / <alpha-value>)",
-        // Clean athletic light theme — cool teal/emerald primary + sky secondary
+        sheet: "rgb(var(--sheet) / <alpha-value>)",
+        // Coral / warm orange — matches fitness mockups
         brand: {
-          50: "#ecfdf5",
-          100: "#d1fae5",
-          200: "#a7f3d0",
-          300: "#6ee7b7",
-          400: "#34d399",
-          500: "#10b981",
-          600: "#059669",
-          700: "#047857",
-          800: "#065f46",
-          900: "#064e3b",
+          50: "#fff5f2",
+          100: "#ffe8e1",
+          200: "#ffd0c2",
+          300: "#ffb09a",
+          400: "#ff8a6b",
+          500: "#ff6b4e",
+          600: "#f04d2e",
+          700: "#d13a1f",
+          800: "#ad311c",
+          900: "#8f2c1c",
         },
         accent: {
-          50: "#f0f9ff",
-          100: "#e0f2fe",
-          200: "#bae6fd",
-          300: "#7dd3fc",
-          400: "#38bdf8",
-          500: "#0ea5e9",
-          600: "#0284c7",
-          700: "#0369a1",
+          50: "#fff8f0",
+          100: "#ffedd5",
+          200: "#fed7aa",
+          300: "#fdba74",
+          400: "#fb923c",
+          500: "#f97316",
+          600: "#ea580c",
+          700: "#c2410c",
         },
-        // Neutral scale — CSS-variable backed so it inverts in dark mode.
         ink: {
           50: "rgb(var(--ink-50) / <alpha-value>)",
           100: "rgb(var(--ink-100) / <alpha-value>)",
@@ -53,12 +52,14 @@ const config: Config = {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        card: "0 1px 3px 0 rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.04)",
-        cardhover: "0 8px 24px -6px rgb(15 23 42 / 0.12)",
+        card: "0 4px 24px -4px rgb(0 0 0 / 0.35)",
+        cardhover: "0 12px 32px -8px rgb(0 0 0 / 0.45)",
+        soft: "0 2px 12px rgb(0 0 0 / 0.08)",
       },
       borderRadius: {
-        xl: "0.875rem",
-        "2xl": "1.25rem",
+        xl: "1rem",
+        "2xl": "1.5rem",
+        "3xl": "1.75rem",
       },
     },
   },

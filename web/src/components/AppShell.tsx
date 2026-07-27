@@ -37,15 +37,14 @@ export function AppShell({
       : pathname === href;
 
   return (
-    <div className="min-h-screen pb-20 sm:pb-0">
-      {/* Top header */}
-      <header className="sticky top-0 z-30 border-b border-ink-100 bg-surface/80 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+    <div className="min-h-screen pb-24 sm:pb-0">
+      <header className="sticky top-0 z-30 border-b border-ink-100/80 bg-ink-50/85 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href="/dashboard" aria-label={t("nav.home")}>
             <Logo className="text-xl" />
           </Link>
 
-          <nav className="hidden items-center gap-1 sm:flex">
+          <nav className="hidden items-center gap-1 md:flex">
             {NAV.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
@@ -53,8 +52,10 @@ export function AppShell({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold transition ${
-                    active ? "bg-brand-50 text-brand-700" : "text-ink-500 hover:bg-ink-100 hover:text-ink-800"
+                  className={`inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-sm font-semibold transition ${
+                    active
+                      ? "bg-brand-500/15 text-brand-400"
+                      : "text-ink-500 hover:bg-ink-100 hover:text-ink-800"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -71,15 +72,15 @@ export function AppShell({
               {t("nav.newWorkout")}
             </Link>
             <div className="group relative">
-              <button className="grid h-9 w-9 place-items-center rounded-full bg-ink-100 text-sm font-bold text-ink-600 ring-1 ring-ink-200">
+              <button className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-accent-500 text-sm font-bold text-white shadow-sm">
                 {email.charAt(0).toUpperCase()}
               </button>
-              <div className="invisible absolute end-0 top-full z-40 w-56 translate-y-1 rounded-xl bg-surface p-2 opacity-0 shadow-cardhover ring-1 ring-ink-100 transition-all group-hover:visible group-hover:translate-y-2 group-hover:opacity-100">
+              <div className="invisible absolute end-0 top-full z-40 w-56 translate-y-1 rounded-2xl bg-surface p-2 opacity-0 shadow-cardhover ring-1 ring-ink-100 transition-all group-hover:visible group-hover:translate-y-2 group-hover:opacity-100">
                 <p className="truncate px-3 py-2 text-xs text-ink-500">{email}</p>
-                <Link href="/profile" className="block w-full rounded-lg px-3 py-2 text-start text-sm font-medium text-ink-700 hover:bg-ink-100">
+                <Link href="/profile" className="block w-full rounded-xl px-3 py-2 text-start text-sm font-medium text-ink-700 hover:bg-ink-100">
                   {t("nav.profile")}
                 </Link>
-                <button onClick={signOut} className="w-full rounded-lg px-3 py-2 text-start text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40">
+                <button onClick={signOut} className="w-full rounded-xl px-3 py-2 text-start text-sm font-medium text-red-400 hover:bg-red-500/10">
                   {t("nav.signOut")}
                 </button>
               </div>
@@ -88,11 +89,10 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">{children}</main>
 
-      {/* Mobile bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-ink-100 bg-surface/90 backdrop-blur sm:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-5">
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-ink-100/80 bg-surface/95 backdrop-blur-xl md:hidden">
+        <div className="mx-auto grid max-w-lg grid-cols-5 px-1 pb-[env(safe-area-inset-bottom)]">
           {NAV.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -101,10 +101,12 @@ export function AppShell({
                 key={item.href}
                 href={item.href}
                 className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold ${
-                  active ? "text-brand-600" : "text-ink-400"
+                  active ? "text-brand-500" : "text-ink-400"
                 }`}
               >
-                <Icon className="h-5 w-5" />
+                <span className={`grid h-8 w-8 place-items-center rounded-xl ${active ? "bg-brand-500/15" : ""}`}>
+                  <Icon className="h-5 w-5" />
+                </span>
                 {t(item.labelKey)}
               </Link>
             );
@@ -112,14 +114,18 @@ export function AppShell({
           <Link
             href="/profile"
             className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold ${
-              pathname === "/profile" ? "text-brand-600" : "text-ink-400"
+              pathname === "/profile" ? "text-brand-500" : "text-ink-400"
             }`}
           >
-            <UserIcon className="h-5 w-5" />
+            <span className={`grid h-8 w-8 place-items-center rounded-xl ${pathname === "/profile" ? "bg-brand-500/15" : ""}`}>
+              <UserIcon className="h-5 w-5" />
+            </span>
             {t("nav.profile")}
           </Link>
           <button onClick={signOut} className="flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold text-ink-400">
-            <LogoutIcon className="h-5 w-5" />
+            <span className="grid h-8 w-8 place-items-center rounded-xl">
+              <LogoutIcon className="h-5 w-5" />
+            </span>
             {t("nav.signOut")}
           </button>
         </div>

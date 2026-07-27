@@ -66,7 +66,7 @@ export default function Login() {
             {notice && <Text style={s.notice}>{notice}</Text>}
 
             <TouchableOpacity style={s.btn} onPress={submit} disabled={loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>{mode === "signin" ? "Sign in" : "Create account"}</Text>}
+              {loading ? <ActivityIndicator color={theme.colors.white} /> : <Text style={s.btnText}>{mode === "signin" ? "Sign in" : "Create account"}</Text>}
             </TouchableOpacity>
           </View>
           <Text style={s.footer}>Secured with Supabase Auth · Your data is private.</Text>
@@ -81,21 +81,27 @@ const s = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, justifyContent: "center", padding: 24 },
   logoWrap: { alignItems: "center", marginBottom: 28 },
-  logoBadge: { width: 64, height: 64, borderRadius: 18, backgroundColor: theme.colors.brand, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  logoBadge: {
+    width: 68, height: 68, borderRadius: 22,
+    backgroundColor: theme.colors.brand, alignItems: "center", justifyContent: "center", marginBottom: 14,
+  },
   logoIcon: { fontSize: 30 },
-  logoText: { fontSize: 28, fontWeight: "800", color: theme.colors.ink900 },
-  tagline: { marginTop: 8, color: theme.colors.ink500, textAlign: "center", fontSize: 13 },
+  logoText: { fontSize: 30, fontWeight: "800", color: theme.colors.ink900 },
+  tagline: { marginTop: 8, color: theme.colors.ink500, textAlign: "center", fontSize: 13, lineHeight: 18 },
   card: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, padding: 20, ...theme.shadow },
-  tabs: { flexDirection: "row", backgroundColor: theme.colors.ink100, borderRadius: theme.radius.md, padding: 4, marginBottom: 18 },
-  tab: { flex: 1, paddingVertical: 9, borderRadius: theme.radius.sm, alignItems: "center" },
-  tabActive: { backgroundColor: theme.colors.surface, ...theme.shadow },
+  tabs: { flexDirection: "row", backgroundColor: theme.colors.surface2, borderRadius: theme.radius.md, padding: 4, marginBottom: 18 },
+  tab: { flex: 1, paddingVertical: 10, borderRadius: theme.radius.sm, alignItems: "center" },
+  tabActive: { backgroundColor: theme.colors.brand },
   tabText: { fontWeight: "700", color: theme.colors.ink500, fontSize: 13 },
-  tabTextActive: { color: theme.colors.ink900 },
+  tabTextActive: { color: theme.colors.white },
   label: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, color: theme.colors.ink500, marginBottom: 6, marginTop: 12 },
-  input: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.ink200, borderRadius: theme.radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: theme.colors.ink900 },
+  input: {
+    backgroundColor: theme.colors.surface2, borderWidth: 1, borderColor: theme.colors.ink200,
+    borderRadius: theme.radius.md, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: theme.colors.ink900,
+  },
   error: { marginTop: 12, color: theme.colors.danger, backgroundColor: theme.colors.dangerSoft, padding: 10, borderRadius: theme.radius.sm, fontSize: 13 },
-  notice: { marginTop: 12, color: theme.colors.brandDark, backgroundColor: theme.colors.brandSoft, padding: 10, borderRadius: theme.radius.sm, fontSize: 13 },
-  btn: { marginTop: 20, backgroundColor: theme.colors.brand, borderRadius: theme.radius.md, paddingVertical: 14, alignItems: "center" },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  notice: { marginTop: 12, color: theme.colors.brand, backgroundColor: theme.colors.brandSoft, padding: 10, borderRadius: theme.radius.sm, fontSize: 13 },
+  btn: { marginTop: 20, backgroundColor: theme.colors.brand, borderRadius: theme.radius.full, paddingVertical: 15, alignItems: "center" },
+  btnText: { color: theme.colors.white, fontWeight: "700", fontSize: 15 },
   footer: { marginTop: 20, textAlign: "center", color: theme.colors.ink400, fontSize: 11 },
 });

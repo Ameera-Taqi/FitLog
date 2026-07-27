@@ -5,10 +5,10 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "fitlog",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": false,
     "splash": {
-      "backgroundColor": "#059669",
+      "backgroundColor": "#12141A",
       "resizeMode": "contain"
     },
     "ios": {
@@ -18,7 +18,7 @@
     "android": {
       "package": "com.ameerataqi.fitlog",
       "adaptiveIcon": {
-        "backgroundColor": "#059669"
+        "backgroundColor": "#12141A"
       }
     },
     "web": {

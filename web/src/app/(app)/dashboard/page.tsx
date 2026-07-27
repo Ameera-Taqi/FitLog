@@ -4,15 +4,16 @@ import { StatTile } from "@/components/StatTile";
 import { WeeklyBars, type WeekBar } from "@/components/WeeklyBars";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import type { Workout } from "@/lib/types";
-import { totalVolume, formatVolume } from "@/lib/format";
+import { totalVolume, formatVolume, formatDuration } from "@/lib/format";
 import { getMyUnit } from "@/lib/profile";
 import { getT } from "@/lib/i18n/server";
+import { workoutTypeMeta } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
 function startOfWeek(d: Date): Date {
   const x = new Date(d);
-  const day = (x.getDay() + 6) % 7; // Monday = 0
+  const day = (x.getDay() + 6) % 7;
   x.setDate(x.getDate() - day);
   x.setHours(0, 0, 0, 0);
   return x;
@@ -20,30 +21,36 @@ function startOfWeek(d: Date): Date {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("workouts")
-    .select("*, exercises(*, exercise_sets(*)), progress_photos(id)")
-    .order("workout_date", { ascending: false })
-    .limit(300);
+  const [{ data }, { data: userData }] = await Promise.all([
+    supabase
+      .from("workouts")
+      .select("*, exercises(*, exercise_sets(*)), progress_photos(id)")
+      .order("workout_date", { ascending: false })
+      .limit(300),
+    supabase.auth.getUser(),
+  ]);
 
   const workouts = (data ?? []) as Workout[];
   const unit = await getMyUnit();
   const { t } = await getT();
+  const email = userData.user?.email ?? "";
+  const displayName = email.split("@")[0] || "Athlete";
 
   const now = new Date();
   const weekStart = startOfWeek(now);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const todayStr = now.toISOString().slice(0, 10);
 
   const totalWorkouts = workouts.length;
   const completed = workouts.filter((w) => w.completed).length;
   const thisWeek = workouts.filter((w) => new Date(w.workout_date + "T00:00:00") >= weekStart).length;
   const volume = workouts.reduce((sum, w) => sum + totalVolume(w.exercises), 0);
   const volumeStat = formatVolume(volume, unit);
+  const calories = workouts.reduce((sum, w) => sum + (w.calories_burned ?? 0), 0);
   const prsThisMonth = workouts
     .filter((w) => new Date(w.workout_date + "T00:00:00") >= monthStart)
     .reduce((sum, w) => sum + (w.exercises?.filter((e) => e.is_pr).length ?? 0), 0);
 
-  // Weekly bars — last 8 weeks
   const weeks: WeekBar[] = [];
   for (let i = 7; i >= 0; i--) {
     const ws = new Date(weekStart);
@@ -61,44 +68,118 @@ export default async function DashboardPage() {
     });
   }
 
+  const todayWorkouts = workouts.filter((w) => w.workout_date === todayStr);
   const recent = workouts.slice(0, 4);
+  const listForSheet = todayWorkouts.length > 0 ? todayWorkouts : recent;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-ink-900">{t("dashboard.title")}</h1>
-          <p className="text-sm text-ink-500">{t("dashboard.subtitle")}</p>
+    <div className="space-y-6 lg:space-y-8">
+      {/* Welcome header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-accent-500 text-lg font-bold text-white shadow-sm">
+            {displayName.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="text-sm text-ink-500">{t("dashboard.subtitle")}</p>
+            <h1 className="text-xl font-extrabold tracking-tight text-ink-900 sm:text-2xl">
+              {displayName}
+            </h1>
+          </div>
         </div>
-        <Link href="/workouts/new" className="btn-primary sm:hidden">{t("dashboard.logWorkout")}</Link>
+        <Link href="/workouts/new" className="btn-primary sm:hidden">
+          {t("dashboard.logWorkout")}
+        </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <StatTile label={t("dashboard.totalWorkouts")} value={totalWorkouts} sub={t("dashboard.completed", { n: completed })} icon={<IconDumbbell />} />
-        <StatTile label={t("dashboard.thisWeek")} value={thisWeek} sub={t("dashboard.workoutsLogged")} accent="accent" icon={<IconCalendar />} />
+      {/* Highlight stats — dashboard mockup style */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="card flex items-center gap-4 p-4 sm:p-5">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-500/15 text-brand-400">
+            <IconDumbbell />
+          </span>
+          <div>
+            <p className="text-2xl font-extrabold tabular-nums text-ink-900">{completed}</p>
+            <p className="text-xs font-medium text-ink-500">Workouts Completed</p>
+            <p className="text-xs text-ink-400">{t("dashboard.totalWorkouts")}: {totalWorkouts}</p>
+          </div>
+        </div>
+        <div className="card flex items-center gap-4 p-4 sm:p-5">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-accent-500/15 text-accent-400">
+            <IconFlame />
+          </span>
+          <div>
+            <p className="text-2xl font-extrabold tabular-nums text-ink-900">{calories.toLocaleString()}</p>
+            <p className="text-xs font-medium text-ink-500">Calories Burnt</p>
+            <p className="text-xs text-ink-400">{t("dashboard.thisWeek")}: {thisWeek}</p>
+          </div>
+        </div>
         <StatTile label={t("dashboard.totalVolume")} value={volumeStat.value} sub={t("dashboard.volumeSub", { unit })} icon={<IconWeight />} />
         <StatTile label={t("dashboard.prsThisMonth")} value={prsThisMonth} sub={t("dashboard.personalRecords")} accent="accent" icon={<IconTrophy />} />
       </div>
 
       {totalWorkouts > 0 ? (
-        <>
-          <WeeklyBars data={weeks} />
+        <div className="grid gap-6 lg:grid-cols-5 lg:items-start">
+          <div className="lg:col-span-3">
+            <WeeklyBars data={weeks} />
+          </div>
 
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-black uppercase tracking-tight text-ink-900">{t("dashboard.recentWorkouts")}</h2>
-              <Link href="/workouts" className="text-sm font-semibold text-brand-600 hover:text-brand-700">{t("dashboard.viewAll")}</Link>
+          {/* Sheet-style recent / today list */}
+          <div className="sheet-panel p-5 sm:p-6 lg:col-span-2 lg:rounded-3xl dark:text-[#12141A]">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-extrabold tracking-tight">
+                {todayWorkouts.length > 0 ? "Today's Workouts" : t("dashboard.recentWorkouts")}
+              </h2>
+              <Link href="/workouts" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
+                {t("dashboard.viewAll")}
+              </Link>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-3">
+              {listForSheet.slice(0, 5).map((w) => {
+                const type = workoutTypeMeta(w.workout_type);
+                const exCount = w.exercises?.length ?? 0;
+                return (
+                  <Link
+                    key={w.id}
+                    href={`/workouts/${w.id}`}
+                    className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-soft ring-1 ring-black/5 transition hover:ring-brand-500/30"
+                  >
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#F0F1F4] text-xl">
+                      {type.icon}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-bold text-[#12141A]">{w.name}</p>
+                      <p className="text-xs text-[#6B7280]">
+                        {exCount} {exCount === 1 ? t("card.exercise") : t("card.exercises")}
+                        {w.duration_minutes != null ? ` · ${formatDuration(w.duration_minutes)}` : ""}
+                      </p>
+                    </div>
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-500 text-white">
+                      <PlayIcon />
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="lg:col-span-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-extrabold tracking-tight text-ink-900">{t("dashboard.recentWorkouts")}</h2>
+              <Link href="/workouts" className="text-sm font-semibold text-brand-500 hover:text-brand-400">
+                {t("dashboard.viewAll")}
+              </Link>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {recent.map((w) => (
                 <WorkoutCard key={w.id} workout={w} />
               ))}
             </div>
           </div>
-        </>
+        </div>
       ) : (
         <div className="card flex flex-col items-center gap-4 p-10 text-center">
-          <div className="grid h-16 w-16 place-items-center rounded-2xl bg-brand-50 text-brand-500">
+          <div className="grid h-16 w-16 place-items-center rounded-2xl bg-brand-500/15 text-brand-400">
             <IconDumbbell />
           </div>
           <div>
@@ -114,15 +195,16 @@ export default async function DashboardPage() {
 
 function IconDumbbell() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6.5 6.5v11M4 9v6M17.5 6.5v11M20 9v6M6.5 12h11" />
     </svg>
   );
 }
-function IconCalendar() {
+function IconFlame() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1.5-3-1 2.5-3 2.5-3 5a2.5 2.5 0 0 0 2 2.5z" />
+      <path d="M12 2c1 3 2.5 4.5 2.5 7.5A4.5 4.5 0 1 1 7.4 15.1C6 13 6 10.5 8 8c0 2 1 3 2 3 .5-2 1.5-4.5 2-9z" />
     </svg>
   );
 }
@@ -137,6 +219,13 @@ function IconTrophy() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M6 4h12v5a6 6 0 0 1-12 0zM9 20h6M12 15v5" />
+    </svg>
+  );
+}
+function PlayIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M8 5v14l11-7z" />
     </svg>
   );
 }

@@ -53,10 +53,14 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="absolute end-4 top-4">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-brand-500/20 blur-3xl" />
+        <div className="absolute -bottom-24 -left-16 h-80 w-80 rounded-full bg-accent-500/10 blur-3xl" />
+      </div>
+      <div className="absolute end-4 top-4 z-10">
         <PreferenceControls />
       </div>
-      <div className="w-full max-w-md">
+      <div className="relative z-10 w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
           <Logo className="text-2xl" />
           <p className="mt-3 text-sm text-ink-500">
@@ -65,18 +69,18 @@ export default function LoginPage() {
         </div>
 
         <div className="card p-6 sm:p-8">
-          <div className="mb-6 grid grid-cols-2 gap-1 rounded-xl bg-ink-100 p-1 text-sm font-semibold">
+          <div className="mb-6 grid grid-cols-2 gap-1 rounded-2xl bg-ink-100 p-1 text-sm font-semibold">
             <button
               type="button"
               onClick={() => { setMode("signin"); setError(null); }}
-              className={`rounded-lg py-2 transition ${mode === "signin" ? "bg-surface text-ink-900 shadow-sm" : "text-ink-500"}`}
+              className={`rounded-xl py-2.5 transition ${mode === "signin" ? "bg-brand-500 text-white shadow-sm" : "text-ink-500"}`}
             >
               {t("login.signin")}
             </button>
             <button
               type="button"
               onClick={() => { setMode("signup"); setError(null); }}
-              className={`rounded-lg py-2 transition ${mode === "signup" ? "bg-surface text-ink-900 shadow-sm" : "text-ink-500"}`}
+              className={`rounded-xl py-2.5 transition ${mode === "signup" ? "bg-brand-500 text-white shadow-sm" : "text-ink-500"}`}
             >
               {t("login.createAccount")}
             </button>

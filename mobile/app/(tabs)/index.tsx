@@ -50,25 +50,37 @@ export default function WorkoutsList() {
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
       <View style={s.header}>
-        <View>
-          <Text style={s.title}>Workouts</Text>
-          <Text style={s.subtitle}>{workouts.length} sessions · {weekCount} this week</Text>
+        <View style={s.titleRow}>
+          <Text style={s.titleIcon}>🏋️</Text>
+          <View>
+            <Text style={s.title}>Workout Plans</Text>
+            <Text style={s.subtitle}>{workouts.length} sessions · {weekCount} this week</Text>
+          </View>
         </View>
         <TouchableOpacity style={s.newBtn} onPress={() => router.push("/(tabs)/new")}>
           <Text style={s.newBtnText}>+ New</Text>
         </TouchableOpacity>
       </View>
 
+      <View style={s.tabs}>
+        <Text style={[s.tab, s.tabActive]}>Explore</Text>
+        <Text style={s.tab}>Your Plans</Text>
+      </View>
+
       <View style={s.searchRow}>
-        <TextInput
-          style={s.search}
-          placeholder="Search workout name…"
-          placeholderTextColor={theme.colors.ink400}
-          value={search}
-          onChangeText={setSearch}
-          onSubmitEditing={load}
-          returnKeyType="search"
-        />
+        <View style={s.searchWrap}>
+          <Text style={s.searchIcon}>⌕</Text>
+          <TextInput
+            style={s.search}
+            placeholder="Search"
+            placeholderTextColor={theme.colors.ink400}
+            value={search}
+            onChangeText={setSearch}
+            onSubmitEditing={load}
+            returnKeyType="search"
+          />
+          <Text style={s.filterIcon}>☰</Text>
+        </View>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterScroll} contentContainerStyle={s.filterRow}>
@@ -84,7 +96,9 @@ export default function WorkoutsList() {
       <FlatList
         data={workouts}
         keyExtractor={(w) => w.id}
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        numColumns={2}
+        columnWrapperStyle={{ gap: 12 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.brand} />}
         ListEmptyComponent={
           !loading ? (
@@ -95,7 +109,7 @@ export default function WorkoutsList() {
             </View>
           ) : null
         }
-        renderItem={({ item }) => <WorkoutRow workout={item} onPress={() => router.push(`/workout/${item.id}`)} />}
+        renderItem={({ item }) => <WorkoutTile workout={item} onPress={() => router.push(`/workout/${item.id}`)} />}
       />
     </SafeAreaView>
   );
@@ -109,41 +123,28 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
   );
 }
 
-function WorkoutRow({ workout, onPress }: { workout: Workout; onPress: () => void }) {
+function WorkoutTile({ workout, onPress }: { workout: Workout; onPress: () => void }) {
   const meta = typeMeta(workout.workout_type);
-  const exCount = workout.exercises?.length ?? 0;
-  const setCount = workout.exercises?.reduce((n, e) => n + (e.exercise_sets?.length ?? 0), 0) ?? 0;
   const hasPR = workout.exercises?.some((e) => e.is_pr);
   return (
-    <TouchableOpacity style={s.card} onPress={onPress} activeOpacity={0.7}>
-      <View style={s.cardTop}>
-        <View style={s.cardIcon}><Text style={{ fontSize: 22 }}>{meta.icon}</Text></View>
-        <View style={{ flex: 1 }}>
-          <Text style={s.cardTitle} numberOfLines={1}>{workout.name}</Text>
-          <Text style={s.cardDate}>{formatDate(workout.workout_date)}</Text>
-        </View>
-        <View style={{ alignItems: "flex-end", gap: 4 }}>
-          <View style={[s.badge, workout.completed ? s.badgeGreen : s.badgeGray]}>
-            <Text style={[s.badgeText, workout.completed ? s.badgeTextGreen : s.badgeTextGray]}>
-              {workout.completed ? "Completed" : "In progress"}
-            </Text>
-          </View>
-          {hasPR && <View style={[s.badge, s.badgeAmber]}><Text style={[s.badgeText, s.badgeTextAmber]}>★ PR</Text></View>}
+    <TouchableOpacity style={s.tile} onPress={onPress} activeOpacity={0.85}>
+      <View style={s.tileHero}>
+        <Text style={s.tileEmoji}>{meta.icon}</Text>
+        <View style={s.tileOverlay}>
+          <Text style={s.tileBadge}>{meta.label}</Text>
+          {workout.duration_minutes != null && (
+            <Text style={s.tileBadge}>{formatDuration(workout.duration_minutes)}</Text>
+          )}
         </View>
       </View>
-      <View style={s.cardMeta}>
-        <Text style={s.metaStrong}>{meta.label}</Text>
-        {exCount > 0 && <Text style={s.metaText}>· {exCount} ex · {setCount} sets</Text>}
-        {workout.duration_minutes != null && <Text style={s.metaText}>· {formatDuration(workout.duration_minutes)}</Text>}
-      </View>
-      {(workout.muscle_groups ?? []).length > 0 && (
-        <View style={s.muscleRow}>
-          {(workout.muscle_groups ?? []).slice(0, 4).map((m) => (
-            <View key={m} style={s.muscleChip}><Text style={s.muscleText}>{m}</Text></View>
-          ))}
-          {(workout.muscle_groups ?? []).length > 4 && <Text style={s.metaText}>+{(workout.muscle_groups ?? []).length - 4}</Text>}
-        </View>
-      )}
+      <Text style={s.tileTitle} numberOfLines={1}>{workout.name}</Text>
+      <Text style={s.tileMeta} numberOfLines={1}>
+        {formatDate(workout.workout_date)}{hasPR ? " · ★ PR" : ""}
+      </Text>
+      <Text style={s.tileSub} numberOfLines={1}>
+        {workout.completed ? "Completed" : "In progress"}
+        {(workout.muscle_groups ?? [])[0] ? ` · ${(workout.muscle_groups ?? [])[0]}` : ""}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -151,39 +152,45 @@ function WorkoutRow({ workout, onPress }: { workout: Workout; onPress: () => voi
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.bg },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
-  title: { fontSize: 24, fontWeight: "800", color: theme.colors.ink900 },
-  subtitle: { color: theme.colors.ink500, fontSize: 13, marginTop: 2 },
-  newBtn: { backgroundColor: theme.colors.brand, paddingHorizontal: 16, paddingVertical: 10, borderRadius: theme.radius.md },
-  newBtnText: { color: "#fff", fontWeight: "700" },
-  searchRow: { paddingHorizontal: 16, paddingTop: 10 },
-  search: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.ink200, borderRadius: theme.radius.md, paddingHorizontal: 14, paddingVertical: 11, fontSize: 15, color: theme.colors.ink900 },
-  filterScroll: { maxHeight: 52, marginTop: 10 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  titleIcon: { fontSize: 22 },
+  title: { fontSize: 22, fontWeight: "800", color: theme.colors.ink900 },
+  subtitle: { color: theme.colors.ink500, fontSize: 12, marginTop: 2 },
+  newBtn: { backgroundColor: theme.colors.brand, paddingHorizontal: 16, paddingVertical: 10, borderRadius: theme.radius.full },
+  newBtnText: { color: theme.colors.white, fontWeight: "700" },
+  tabs: { flexDirection: "row", gap: 22, paddingHorizontal: 16, paddingTop: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.ink200 },
+  tab: { paddingBottom: 10, color: theme.colors.ink400, fontWeight: "600", fontSize: 14 },
+  tabActive: { color: theme.colors.ink900, borderBottomWidth: 2, borderBottomColor: theme.colors.ink900 },
+  searchRow: { paddingHorizontal: 16, paddingTop: 14 },
+  searchWrap: {
+    flexDirection: "row", alignItems: "center", backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.full, paddingHorizontal: 14, gap: 8,
+  },
+  searchIcon: { color: theme.colors.ink400, fontSize: 16 },
+  search: { flex: 1, paddingVertical: 12, fontSize: 15, color: theme.colors.ink900 },
+  filterIcon: { color: theme.colors.ink400, fontSize: 14, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.ink200 },
+  filterScroll: { maxHeight: 52, marginTop: 12 },
   filterRow: { paddingHorizontal: 16, gap: 8, alignItems: "center" },
   sep: { width: 1, height: 22, backgroundColor: theme.colors.ink200, marginHorizontal: 4 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: theme.radius.full, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.ink200 },
   chipActive: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
   chipText: { fontSize: 13, fontWeight: "600", color: theme.colors.ink600 },
-  chipTextActive: { color: "#fff" },
-  card: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: 14, marginBottom: 10, ...theme.shadow },
-  cardTop: { flexDirection: "row", alignItems: "center", gap: 12 },
-  cardIcon: { width: 44, height: 44, borderRadius: theme.radius.md, backgroundColor: theme.colors.brandSoft, alignItems: "center", justifyContent: "center" },
-  cardTitle: { fontSize: 16, fontWeight: "700", color: theme.colors.ink900 },
-  cardDate: { fontSize: 12, color: theme.colors.ink500, marginTop: 1 },
-  cardMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 4, marginTop: 10 },
-  metaStrong: { fontSize: 12, fontWeight: "700", color: theme.colors.ink700 },
-  metaText: { fontSize: 12, color: theme.colors.ink500 },
-  muscleRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10, alignItems: "center" },
-  muscleChip: { backgroundColor: theme.colors.ink100, paddingHorizontal: 9, paddingVertical: 4, borderRadius: theme.radius.full },
-  muscleText: { fontSize: 11, color: theme.colors.ink600, fontWeight: "500" },
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: theme.radius.full },
-  badgeGreen: { backgroundColor: theme.colors.brandSoft },
-  badgeGray: { backgroundColor: theme.colors.ink100 },
-  badgeAmber: { backgroundColor: theme.colors.amberSoft },
-  badgeText: { fontSize: 10, fontWeight: "700" },
-  badgeTextGreen: { color: theme.colors.brandDark },
-  badgeTextGray: { color: theme.colors.ink500 },
-  badgeTextAmber: { color: theme.colors.amber },
-  empty: { alignItems: "center", paddingTop: 80 },
+  chipTextActive: { color: theme.colors.white },
+  tile: { flex: 1, maxWidth: "48%" },
+  tileHero: {
+    height: 140, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surface,
+    overflow: "hidden", justifyContent: "flex-end", ...theme.shadow,
+  },
+  tileEmoji: { position: "absolute", alignSelf: "center", top: "28%", fontSize: 42 },
+  tileOverlay: {
+    flexDirection: "row", justifyContent: "space-between", padding: 10,
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  tileBadge: { color: theme.colors.white, fontSize: 11, fontWeight: "700" },
+  tileTitle: { marginTop: 8, fontSize: 14, fontWeight: "700", color: theme.colors.ink900 },
+  tileMeta: { marginTop: 2, fontSize: 11, color: theme.colors.ink500 },
+  tileSub: { marginTop: 2, fontSize: 11, color: theme.colors.ink400 },
+  empty: { alignItems: "center", paddingTop: 80, width: "100%" },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: theme.colors.ink900 },
   emptyText: { color: theme.colors.ink500, marginTop: 4 },
