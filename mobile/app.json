@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "FitLog",
+    "slug": "gym-tracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "fitlog",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "backgroundColor": "#059669",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ameerataqi.fitlog"
+    },
+    "android": {
+      "package": "com.ameerataqi.fitlog",
+      "adaptiveIcon": {
+        "backgroundColor": "#059669"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": ["expo-router"],
+    "extra": {
+      "supabaseUrl": "https://vssmililwzwmtnlkszix.supabase.co",
+      "supabaseAnonKey": "sb_publishable_6_87WV3GX9y2HkEZ3Xd3kw_MxXbOkiD"
+    }
+  }
+}
