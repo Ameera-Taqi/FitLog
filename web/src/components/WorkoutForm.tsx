@@ -232,7 +232,7 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
             <label className="label">{t("form.quickStart")}</label>
             <select value={templateKey} onChange={(e) => selectTemplate(e.target.value)} className="input">
               {WORKOUT_TEMPLATES.map((tpl) => (
-                <option key={tpl.key} value={tpl.key}>{tpl.icon} {t(`template.${tpl.key}`)}</option>
+                <option key={tpl.key} value={tpl.key}>{t(`template.${tpl.key}`)}</option>
               ))}
               <option value="other">{t("form.otherTemplate")}</option>
             </select>
