@@ -44,6 +44,8 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
   };
 
   const [name, setName] = useState(initial?.name ?? "");
+  // Which quick-start template is picked; "other" means a custom, user-typed name.
+  const [templateKey, setTemplateKey] = useState<string>("other");
   const [dates, setDates] = useState<string[]>(initial?.workout_date ? [initial.workout_date] : [todayISO()]);
   const [duration, setDuration] = useState(initial?.duration_minutes?.toString() ?? "");
   const [type, setType] = useState<WorkoutType>(initial?.workout_type ?? "strength");
@@ -91,6 +93,17 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
     setName(t(`template.${tpl.key}`));
     setType(tpl.type);
     setMuscles(tpl.muscles);
+  }
+
+  // Dropdown handler: a template prefills everything; "other" lets the user type a name.
+  function selectTemplate(val: string) {
+    setTemplateKey(val);
+    if (val === "other") {
+      setName("");
+    } else {
+      const tpl = WORKOUT_TEMPLATES.find((x) => x.key === val);
+      if (tpl) applyTemplate(tpl);
+    }
   }
 
   // Exercise mutators
@@ -217,28 +230,19 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="label">{t("form.quickStart")}</label>
-            <div className="flex flex-wrap gap-2">
-              {WORKOUT_TEMPLATES.map((tpl) => {
-                const active = name === t(`template.${tpl.key}`);
-                return (
-                  <button
-                    type="button"
-                    key={tpl.key}
-                    onClick={() => applyTemplate(tpl)}
-                    className={`chip px-3 py-1.5 ring-1 ring-inset transition ${
-                      active ? "bg-brand-600 text-white ring-brand-600" : "bg-surface2 text-ink-600 ring-ink-200 hover:bg-ink-100"
-                    }`}
-                  >
-                    <span>{tpl.icon}</span>{t(`template.${tpl.key}`)}
-                  </button>
-                );
-              })}
+            <select value={templateKey} onChange={(e) => selectTemplate(e.target.value)} className="input">
+              {WORKOUT_TEMPLATES.map((tpl) => (
+                <option key={tpl.key} value={tpl.key}>{tpl.icon} {t(`template.${tpl.key}`)}</option>
+              ))}
+              <option value="other">{t("form.otherTemplate")}</option>
+            </select>
+          </div>
+          {templateKey === "other" && (
+            <div className="sm:col-span-2">
+              <label className="label">{t("form.name")} *</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder={t("form.namePlaceholder")} required />
             </div>
-          </div>
-          <div className="sm:col-span-2">
-            <label className="label">{t("form.name")} *</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder={t("form.namePlaceholder")} required />
-          </div>
+          )}
           <div className="sm:col-span-2">
             <label className="label">{t("form.dates")} *</label>
             <MultiDatePicker value={dates} onChange={setDates} />
