@@ -290,20 +290,15 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
         {exercises.map((ex, ei) => (
           <div key={ei} className={`card p-4 transition sm:p-5 ${ex.completed ? "ring-2 ring-brand-500/60" : ""}`}>
             <div className="flex items-start gap-3">
-              <span className={`mt-2 grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-bold transition ${ex.completed ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700"}`}>
+              <span className={`mt-1.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-bold transition ${ex.completed ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700"}`}>
                 {ex.completed ? <CheckIcon className="h-4 w-4" /> : ei + 1}
               </span>
               <div className="flex-1 space-y-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2">
                   <input list="common-exercises" value={ex.name} onChange={(e) => updateExercise(ei, { name: e.target.value })}
                     className="input flex-1" placeholder={t("form.exerciseNamePlaceholder")} />
-                  <label className="flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm ring-1 ring-inset ring-ink-200">
-                    <input type="checkbox" checked={ex.is_pr} onChange={(e) => updateExercise(ei, { is_pr: e.target.checked })}
-                      className="h-4 w-4 rounded border-ink-300 text-amber-500 focus:ring-amber-400" />
-                    <span className="font-semibold text-amber-600">★ {t("form.pr")}</span>
-                  </label>
                   {exercises.length > 1 && (
-                    <button type="button" onClick={() => removeExercise(ei)} className="btn-ghost px-2 text-ink-400 hover:text-red-500" aria-label="Remove exercise">
+                    <button type="button" onClick={() => removeExercise(ei)} className="btn-ghost shrink-0 px-2 text-ink-400 hover:text-red-500" aria-label="Remove exercise">
                       <TrashIcon />
                     </button>
                   )}
@@ -325,7 +320,7 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
                 )}
 
                 {/* Sets — the user enters how many sets, plus reps/weight/rest per set */}
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2 rounded-xl bg-ink-50 p-3 sm:grid-cols-4">
                   <div>
                     <label className="label">{t("form.sets")}</label>
                     <input type="number" min="0" value={ex.setsCount} onChange={(e) => updateExercise(ei, { setsCount: e.target.value })} className="input" placeholder="3" />
@@ -346,9 +341,9 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
 
                 <input value={ex.notes} onChange={(e) => updateExercise(ei, { notes: e.target.value })} className="input" placeholder={t("form.exerciseNotes")} />
 
-                {/* Per-exercise difficulty + completed */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 pt-3">
-                  <div className="flex items-center gap-2">
+                {/* Meta: difficulty · PR · completed */}
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-ink-100 pt-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-semibold uppercase tracking-wide text-ink-400">{t("form.difficulty")}</span>
                     <div className="flex gap-1.5">
                       {EXERCISE_DIFFICULTIES.map((d) => (
@@ -367,22 +362,36 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
                       ))}
                     </div>
                   </div>
-                  <label
-                    className={`flex cursor-pointer select-none items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold ring-1 ring-inset transition ${
-                      ex.completed
-                        ? "bg-brand-600 text-white ring-brand-600"
-                        : "bg-surface2 text-ink-600 ring-ink-200 hover:bg-ink-100"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={ex.completed}
-                      onChange={(e) => updateExercise(ei, { completed: e.target.checked })}
-                      className="sr-only"
-                    />
-                    <CheckIcon className="h-4 w-4" />
-                    {t("form.completed")}
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => updateExercise(ei, { is_pr: !ex.is_pr })}
+                      aria-pressed={ex.is_pr}
+                      className={`chip gap-1 px-3 py-1.5 text-sm font-bold ring-1 ring-inset transition ${
+                        ex.is_pr
+                          ? "bg-amber-500 text-white ring-amber-500"
+                          : "bg-surface2 text-ink-600 ring-ink-200 hover:bg-ink-100"
+                      }`}
+                    >
+                      ★ {t("form.pr")}
+                    </button>
+                    <label
+                      className={`flex cursor-pointer select-none items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold ring-1 ring-inset transition ${
+                        ex.completed
+                          ? "bg-brand-600 text-white ring-brand-600"
+                          : "bg-surface2 text-ink-600 ring-ink-200 hover:bg-ink-100"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={ex.completed}
+                        onChange={(e) => updateExercise(ei, { completed: e.target.checked })}
+                        className="sr-only"
+                      />
+                      <CheckIcon className="h-4 w-4" />
+                      {t("form.completed")}
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
