@@ -64,7 +64,7 @@ export default async function WorkoutsPage({
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-ink-900">{t("workouts.title")}</h1>
+          <h1 className="text-2xl font-black uppercase tracking-tight text-ink-900">{t("workouts.title")}</h1>
           <p className="text-sm text-ink-500">
             {workouts.length} {workouts.length === 1 ? t("workouts.session") : t("workouts.sessions")}
           </p>

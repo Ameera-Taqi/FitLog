@@ -1,4 +1,11 @@
-import type { WorkoutType, Difficulty, Mood, UnitPreference, Sex, FitnessGoal } from "./types";
+import type { WorkoutType, Difficulty, ExerciseDifficulty, Mood, UnitPreference, Sex, FitnessGoal } from "./types";
+
+// Per-exercise difficulty — a focused 3-level scale (labels share enum.difficulty.*).
+export const EXERCISE_DIFFICULTIES: { value: ExerciseDifficulty }[] = [
+  { value: "easy" },
+  { value: "moderate" },
+  { value: "hard" },
+];
 
 export const UNIT_OPTIONS: { value: UnitPreference; label: string }[] = [
   { value: "kg", label: "Kilograms (kg)" },

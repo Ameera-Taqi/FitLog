@@ -67,7 +67,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-ink-900">{t("dashboard.title")}</h1>
+          <h1 className="text-2xl font-black uppercase tracking-tight text-ink-900">{t("dashboard.title")}</h1>
           <p className="text-sm text-ink-500">{t("dashboard.subtitle")}</p>
         </div>
         <Link href="/workouts/new" className="btn-primary sm:hidden">{t("dashboard.logWorkout")}</Link>
@@ -86,7 +86,7 @@ export default async function DashboardPage() {
 
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-ink-900">{t("dashboard.recentWorkouts")}</h2>
+              <h2 className="text-lg font-black uppercase tracking-tight text-ink-900">{t("dashboard.recentWorkouts")}</h2>
               <Link href="/workouts" className="text-sm font-semibold text-brand-600 hover:text-brand-700">{t("dashboard.viewAll")}</Link>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

@@ -93,19 +93,23 @@ export default async function WorkoutDetailPage({ params }: { params: { id: stri
 
       {/* Exercises */}
       <section className="space-y-3">
-        <h2 className="text-lg font-bold text-ink-900">{t("detail.exercises")}</h2>
+        <h2 className="text-lg font-black uppercase tracking-tight text-ink-900">{t("detail.exercises")}</h2>
         {exercises.length === 0 ? (
           <p className="card p-5 text-sm text-ink-400">{t("detail.noExercises")}</p>
         ) : (
           exercises.map((ex, i) => {
             const sets = (ex.exercise_sets ?? []).slice().sort((a, b) => a.set_number - b.set_number);
             return (
-              <div key={ex.id ?? i} className="card p-4 sm:p-5">
+              <div key={ex.id ?? i} className={`card p-4 sm:p-5 ${ex.completed ? "ring-2 ring-brand-500/60" : ""}`}>
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-50 text-xs font-bold text-brand-700">{i + 1}</span>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-bold ${ex.completed ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700"}`}>
+                      {ex.completed ? "✓" : i + 1}
+                    </span>
                     <h3 className="font-bold text-ink-900">{ex.name}</h3>
                     {ex.is_pr && <span className="chip bg-amber-50 text-amber-600">★ PR</span>}
+                    {ex.difficulty && <span className="chip bg-surface2 text-ink-600 ring-1 ring-inset ring-ink-200">{t(`enum.difficulty.${ex.difficulty}`)}</span>}
+                    {ex.completed && <span className="chip bg-brand-50 text-brand-700">✓ {t("form.completed")}</span>}
                   </div>
                   {(ex.distance_km != null || ex.duration_seconds != null) && (
                     <span className="text-xs text-ink-500">

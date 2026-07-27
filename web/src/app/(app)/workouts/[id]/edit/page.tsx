@@ -25,7 +25,7 @@ export default async function EditWorkoutPage({ params }: { params: { id: string
     <div className="mx-auto max-w-3xl space-y-5">
       <div>
         <Link href={`/workouts/${id}`} className="text-sm font-semibold text-ink-400 hover:text-ink-600">← {t("form.backToWorkout")}</Link>
-        <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-ink-900">{t("form.editTitle")}</h1>
+        <h1 className="mt-1 text-2xl font-black uppercase tracking-tight text-ink-900">{t("form.editTitle")}</h1>
       </div>
       <WorkoutForm initial={data as Workout} unit={unit} />
     </div>

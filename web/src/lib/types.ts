@@ -12,6 +12,9 @@ export type WorkoutType =
 
 export type Difficulty = "easy" | "moderate" | "hard" | "very_hard" | "max_effort";
 
+// Per-exercise difficulty is a simpler 3-level scale.
+export type ExerciseDifficulty = "easy" | "moderate" | "hard";
+
 export type Mood = "terrible" | "bad" | "okay" | "good" | "great";
 
 export type UnitPreference = "kg" | "lb";
@@ -59,6 +62,8 @@ export interface Exercise {
   name: string;
   position: number;
   is_pr: boolean;
+  difficulty: ExerciseDifficulty | null;
+  completed: boolean;
   distance_km: number | null;
   duration_seconds: number | null;
   notes: string | null;

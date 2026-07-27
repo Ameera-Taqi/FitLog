@@ -62,7 +62,7 @@ body {
     @apply rounded-2xl bg-surface shadow-card ring-1 ring-ink-100;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold uppercase tracking-wide transition
            focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2
            disabled:cursor-not-allowed disabled:opacity-50;
   }
