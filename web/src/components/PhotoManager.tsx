@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
@@ -20,6 +21,7 @@ export function PhotoManager({
   initial: PhotoItem[];
 }) {
   const supabase = createClient();
+  const router = useRouter();
   const { t } = useI18n();
   const [photos, setPhotos] = useState<PhotoItem[]>(initial);
   const [busy, setBusy] = useState(false);
@@ -57,6 +59,8 @@ export function PhotoManager({
         added.push({ id: row.id, storage_path: path, url: signed?.signedUrl ?? "" });
       }
       setPhotos((cur) => [...added, ...cur]);
+      // Hero cards depend on photos — refresh list views after upload
+      router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
@@ -72,6 +76,7 @@ export function PhotoManager({
       await supabase.storage.from(BUCKET).remove([photo.storage_path]);
       await supabase.from("progress_photos").delete().eq("id", photo.id);
       setPhotos((cur) => cur.filter((p) => p.id !== photo.id));
+      router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Couldn't delete photo.");
     } finally {
@@ -96,15 +101,20 @@ export function PhotoManager({
       ) : (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {photos.map((p) => (
-            <div key={p.id} className="group relative aspect-square overflow-hidden rounded-xl ring-1 ring-ink-100">
+            <div key={p.id} className="relative aspect-square overflow-hidden rounded-xl ring-1 ring-ink-100">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.url} alt="Progress" className="h-full w-full object-cover" />
+              <img src={p.url} alt="Progress" className="h-full w-full object-cover object-center" />
               <button
+                type="button"
                 onClick={() => remove(p)}
-                className="absolute end-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-lg bg-black/50 text-white opacity-0 backdrop-blur transition group-hover:opacity-100"
-                aria-label="Delete photo"
+                disabled={busy}
+                className="absolute end-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full bg-black/70 text-white shadow-md backdrop-blur-sm transition hover:bg-red-500 disabled:opacity-50"
+                aria-label={t("photos.delete")}
+                title={t("photos.delete")}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
               </button>
             </div>
           ))}

@@ -137,6 +137,7 @@ const en = {
     add: "+ Add photo",
     working: "Working…",
     none: "No photos yet. Add a progress shot for this session.",
+    delete: "Delete photo",
   },
   del: {
     sure: "Sure?",
@@ -241,7 +242,7 @@ const en = {
     },
     muscle: {
       Chest: "Chest", Back: "Back", Shoulders: "Shoulders", Biceps: "Biceps", Triceps: "Triceps",
-      Forearms: "Forearms", Core: "Core", Abs: "Abs", Quads: "Quads", Hamstrings: "Hamstrings",
+      Forearms: "Forearms", Core: "Core", Abs: "Abs", Legs: "Legs", Quads: "Quads", Hamstrings: "Hamstrings",
       Glutes: "Glutes", Calves: "Calves", "Full body": "Full body", Cardio: "Cardio",
     },
     goal: {
@@ -383,6 +384,7 @@ const ar: Dict = {
     add: "+ إضافة صورة",
     working: "جارٍ العمل…",
     none: "لا صور بعد. أضف صورة تقدّم لهذه الجلسة.",
+    delete: "حذف الصورة",
   },
   del: {
     sure: "متأكد؟",
@@ -487,7 +489,7 @@ const ar: Dict = {
     },
     muscle: {
       Chest: "الصدر", Back: "الظهر", Shoulders: "الأكتاف", Biceps: "البايسبس", Triceps: "الترايسبس",
-      Forearms: "الساعدان", Core: "الجذع", Abs: "البطن", Quads: "العضلات الأمامية", Hamstrings: "العضلات الخلفية",
+      Forearms: "الساعدان", Core: "الجذع", Abs: "البطن", Legs: "الأرجل", Quads: "العضلات الأمامية", Hamstrings: "العضلات الخلفية",
       Glutes: "الأرداف", Calves: "السمانة", "Full body": "الجسم كامل", Cardio: "كارديو",
     },
     goal: {

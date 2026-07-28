@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -80,6 +80,7 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const savingRef = useRef(false);
 
   const isCardio = type === "cardio";
   const effectiveDuration = num(duration);
@@ -115,9 +116,11 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (savingRef.current) return;
     setError(null);
     if (!name.trim()) { setError(t("form.errName")); return; }
     if (dates.length === 0) { setError(t("form.errNoDate")); return; }
+    savingRef.current = true;
     setSaving(true);
 
     const { data: userData } = await supabase.auth.getUser();
@@ -199,7 +202,8 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
     }
 
     try {
-      const sortedDates = [...dates].sort();
+      // Deduplicate dates so one calendar day never creates two sessions.
+      const sortedDates = [...new Set(dates)].sort();
       const ids: string[] = [];
 
       if (isEdit && initial?.id) {
@@ -217,6 +221,7 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
       router.push(ids.length === 1 ? `/workouts/${ids[0]}` : "/workouts");
       router.refresh();
     } catch (err: unknown) {
+      savingRef.current = false;
       setError(err instanceof Error ? err.message : t("form.errGeneric"));
       setSaving(false);
     }
@@ -379,22 +384,24 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
                     >
                       ★ {t("form.pr")}
                     </button>
-                    <label
-                      className={`flex cursor-pointer select-none items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold ring-1 ring-inset transition ${
-                        ex.completed
-                          ? "bg-brand-600 text-white ring-brand-600"
-                          : "bg-surface2 text-ink-600 ring-ink-200 hover:bg-ink-100"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={ex.completed}
-                        onChange={(e) => updateExercise(ei, { completed: e.target.checked })}
-                        className="sr-only"
-                      />
-                      <CheckIcon className="h-4 w-4" />
-                      {t("form.completed")}
-                    </label>
+                    {!isEdit && (
+                      <label
+                        className={`flex cursor-pointer select-none items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold ring-1 ring-inset transition ${
+                          ex.completed
+                            ? "bg-brand-600 text-white ring-brand-600"
+                            : "bg-surface2 text-ink-600 ring-ink-200 hover:bg-ink-100"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={ex.completed}
+                          onChange={(e) => updateExercise(ei, { completed: e.target.checked })}
+                          className="sr-only"
+                        />
+                        <CheckIcon className="h-4 w-4" />
+                        {t("form.completed")}
+                      </label>
+                    )}
                   </div>
                 </div>
               </div>

@@ -8,6 +8,7 @@ import { totalVolume, formatVolume, formatDuration } from "@/lib/format";
 import { getMyUnit } from "@/lib/profile";
 import { getT } from "@/lib/i18n/server";
 import { workoutTypeMeta } from "@/lib/constants";
+import { fetchWorkoutPhotoHeroMap } from "@/lib/workout-hero";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function DashboardPage() {
   const [{ data }, { data: userData }] = await Promise.all([
     supabase
       .from("workouts")
-      .select("*, exercises(*, exercise_sets(*)), progress_photos(id)")
+      .select("*, exercises(*, exercise_sets(*)), progress_photos(id, storage_path, created_at)")
       .order("workout_date", { ascending: false })
       .limit(300),
     supabase.auth.getUser(),
@@ -33,6 +34,7 @@ export default async function DashboardPage() {
   const workouts = (data ?? []) as Workout[];
   const unit = await getMyUnit();
   const { t } = await getT();
+  const photoHeroMap = await fetchWorkoutPhotoHeroMap(supabase, workouts);
   const email = userData.user?.email ?? "";
   const displayName = email.split("@")[0] || "Athlete";
 
@@ -71,6 +73,14 @@ export default async function DashboardPage() {
   const todayWorkouts = workouts.filter((w) => w.workout_date === todayStr);
   const recent = workouts.slice(0, 4);
   const listForSheet = todayWorkouts.length > 0 ? todayWorkouts : recent;
+  // Avoid showing the same sessions twice under the sheet and the card grid.
+  const sheetIds = new Set(listForSheet.map((w) => w.id));
+  const recentCards = recent.filter((w) => !sheetIds.has(w.id));
+  // If filtering removed everything, fall back to next workouts after the sheet list.
+  const gridWorkouts =
+    recentCards.length > 0
+      ? recentCards.slice(0, 4)
+      : workouts.filter((w) => !sheetIds.has(w.id)).slice(0, 4);
 
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -81,8 +91,8 @@ export default async function DashboardPage() {
             {displayName.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p className="text-sm text-ink-500">{t("dashboard.subtitle")}</p>
-            <h1 className="text-xl font-extrabold tracking-tight text-ink-900 sm:text-2xl">
+            <p className="text-sm text-ink-500">Welcome Back</p>
+            <h1 className="text-xl font-extrabold tracking-tight text-ink-900 sm:text-2xl capitalize">
               {displayName}
             </h1>
           </div>
@@ -92,49 +102,53 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* Highlight stats — dashboard mockup style */}
+      {/* Highlight stats — uniform cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="card flex items-center gap-4 p-4 sm:p-5">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-500/15 text-brand-400">
-            <IconDumbbell />
-          </span>
-          <div>
-            <p className="text-2xl font-extrabold tabular-nums text-ink-900">{completed}</p>
-            <p className="text-xs font-medium text-ink-500">Workouts Completed</p>
-            <p className="text-xs text-ink-400">{t("dashboard.totalWorkouts")}: {totalWorkouts}</p>
-          </div>
-        </div>
-        <div className="card flex items-center gap-4 p-4 sm:p-5">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-accent-500/15 text-accent-400">
-            <IconFlame />
-          </span>
-          <div>
-            <p className="text-2xl font-extrabold tabular-nums text-ink-900">{calories.toLocaleString()}</p>
-            <p className="text-xs font-medium text-ink-500">Calories Burnt</p>
-            <p className="text-xs text-ink-400">{t("dashboard.thisWeek")}: {thisWeek}</p>
-          </div>
-        </div>
-        <StatTile label={t("dashboard.totalVolume")} value={volumeStat.value} sub={t("dashboard.volumeSub", { unit })} icon={<IconWeight />} />
-        <StatTile label={t("dashboard.prsThisMonth")} value={prsThisMonth} sub={t("dashboard.personalRecords")} accent="accent" icon={<IconTrophy />} />
+        <StatTile
+          label="Workouts Completed"
+          value={completed}
+          sub={`${t("dashboard.totalWorkouts")}: ${totalWorkouts}`}
+          icon={<IconDumbbell />}
+        />
+        <StatTile
+          label="Calories Burnt"
+          value={calories.toLocaleString()}
+          sub={`${t("dashboard.thisWeek")}: ${thisWeek}`}
+          accent="accent"
+          icon={<IconFlame />}
+        />
+        <StatTile
+          label={t("dashboard.totalVolume")}
+          value={volumeStat.value}
+          sub={t("dashboard.volumeSub", { unit })}
+          icon={<IconWeight />}
+        />
+        <StatTile
+          label={t("dashboard.prsThisMonth")}
+          value={prsThisMonth}
+          sub={t("dashboard.personalRecords")}
+          accent="accent"
+          icon={<IconTrophy />}
+        />
       </div>
 
       {totalWorkouts > 0 ? (
-        <div className="grid gap-6 lg:grid-cols-5 lg:items-start">
+        <div className="grid gap-4 lg:grid-cols-5 lg:items-stretch">
           <div className="lg:col-span-3">
             <WeeklyBars data={weeks} />
           </div>
 
-          {/* Sheet-style recent / today list */}
-          <div className="sheet-panel p-5 sm:p-6 lg:col-span-2 lg:rounded-3xl dark:text-[#12141A]">
+          {/* Recent / today list — same dark card chrome as chart */}
+          <div className="card flex flex-col p-5 sm:p-6 lg:col-span-2">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-extrabold tracking-tight">
+              <h2 className="text-base font-bold text-ink-900">
                 {todayWorkouts.length > 0 ? "Today's Workouts" : t("dashboard.recentWorkouts")}
               </h2>
-              <Link href="/workouts" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
+              <Link href="/workouts" className="text-sm font-semibold text-brand-500 hover:text-brand-400">
                 {t("dashboard.viewAll")}
               </Link>
             </div>
-            <div className="space-y-3">
+            <div className="flex flex-1 flex-col gap-3">
               {listForSheet.slice(0, 5).map((w) => {
                 const type = workoutTypeMeta(w.workout_type);
                 const exCount = w.exercises?.length ?? 0;
@@ -142,14 +156,14 @@ export default async function DashboardPage() {
                   <Link
                     key={w.id}
                     href={`/workouts/${w.id}`}
-                    className="flex items-center gap-3 rounded-2xl bg-white p-3 shadow-soft ring-1 ring-black/5 transition hover:ring-brand-500/30"
+                    className="flex items-center gap-3 rounded-2xl bg-surface2 p-3 ring-1 ring-ink-100 transition hover:ring-brand-500/30"
                   >
-                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#F0F1F4] text-xl">
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-ink-100 text-xl">
                       {type.icon}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-bold text-[#12141A]">{w.name}</p>
-                      <p className="text-xs text-[#6B7280]">
+                      <p className="truncate font-bold text-ink-900">{w.name}</p>
+                      <p className="text-xs text-ink-500">
                         {exCount} {exCount === 1 ? t("card.exercise") : t("card.exercises")}
                         {w.duration_minutes != null ? ` · ${formatDuration(w.duration_minutes)}` : ""}
                       </p>
@@ -163,6 +177,7 @@ export default async function DashboardPage() {
             </div>
           </div>
 
+          {gridWorkouts.length > 0 && (
           <div className="lg:col-span-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-extrabold tracking-tight text-ink-900">{t("dashboard.recentWorkouts")}</h2>
@@ -171,11 +186,16 @@ export default async function DashboardPage() {
               </Link>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {recent.map((w) => (
-                <WorkoutCard key={w.id} workout={w} />
+              {gridWorkouts.map((w) => (
+                <WorkoutCard
+                  key={w.id}
+                  workout={w}
+                  heroImageUrl={photoHeroMap.get(w.id)}
+                />
               ))}
             </div>
           </div>
+          )}
         </div>
       ) : (
         <div className="card flex flex-col items-center gap-4 p-10 text-center">
@@ -210,14 +230,14 @@ function IconFlame() {
 }
 function IconWeight() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="5" r="3" /><path d="M6.5 22 8 10h8l1.5 12" />
     </svg>
   );
 }
 function IconTrophy() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M6 4h12v5a6 6 0 0 1-12 0zM9 20h6M12 15v5" />
     </svg>
   );

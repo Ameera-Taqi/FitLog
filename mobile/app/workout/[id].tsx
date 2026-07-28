@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 import { supabase } from "@/lib/supabase";
 import { theme } from "@/lib/theme";
 import { Workout, typeMeta, difficultyLabel, formatDate, formatDuration, totalVolume } from "@/lib/types";
@@ -42,10 +43,39 @@ export default function WorkoutDetail() {
   const exercises = (w.exercises ?? []).slice().sort((a, b) => a.position - b.position);
   const setCount = exercises.reduce((n, e) => n + (e.exercise_sets?.length ?? 0), 0);
   const volume = totalVolume(exercises);
-  const completedSets = exercises.reduce((n, e) => n + (e.exercise_sets?.filter((st) => st.completed).length ?? 0), 0);
-  const pct = w.completed ? 100 : setCount > 0 ? Math.round((completedSets / setCount) * 100) : exercises.filter((e) => e.completed).length ? Math.round((exercises.filter((e) => e.completed).length / Math.max(1, exercises.length)) * 100) : 0;
+  const doneExercises = exercises.filter((e) => e.completed).length;
+  const pct =
+    exercises.length > 0
+      ? Math.round((doneExercises / exercises.length) * 100)
+      : w.completed
+        ? 100
+        : 0;
   const rests = exercises.flatMap((e) => (e.exercise_sets ?? []).map((st) => st.rest_seconds).filter((n): n is number => n != null));
   const avgRest = rests.length ? Math.round(rests.reduce((a, b) => a + b, 0) / rests.length) : null;
+
+  async function toggleExerciseComplete(exerciseId: string, next: boolean) {
+    const siblings = exercises.filter((e) => e.id !== exerciseId);
+    const allDone = next && siblings.every((e) => e.completed);
+
+    setW((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        completed: allDone,
+        exercises: (prev.exercises ?? []).map((e) =>
+          e.id === exerciseId ? { ...e, completed: next } : e,
+        ),
+      };
+    });
+
+    const { error } = await supabase.from("exercises").update({ completed: next }).eq("id", exerciseId);
+    if (error) {
+      Alert.alert("Couldn't update", error.message);
+      load();
+      return;
+    }
+    await supabase.from("workouts").update({ completed: allDone }).eq("id", id);
+  }
 
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
@@ -76,10 +106,20 @@ export default function WorkoutDetail() {
             const sets = (ex.exercise_sets ?? []).slice().sort((a, b) => a.set_number - b.set_number);
             const maxWeight = Math.max(0, ...sets.map((st) => st.weight ?? 0));
             return (
-              <View key={ex.id ?? i} style={s.whiteCard}>
+              <View key={ex.id ?? i} style={[s.whiteCard, ex.completed && s.whiteCardDone]}>
                 <View style={s.exTitleRow}>
                   <Text style={s.exName}>Exercise {i + 1} — {ex.name}</Text>
-                  <Text style={{ color: theme.colors.onSheetMuted }}>›</Text>
+                  {ex.id ? (
+                    <TouchableOpacity
+                      onPress={() => toggleExerciseComplete(ex.id!, !ex.completed)}
+                      style={[s.doneChip, ex.completed && s.doneChipOn]}
+                    >
+                      <View style={[s.miniCheck, ex.completed && s.miniCheckOn]}>
+                        {ex.completed ? <Text style={s.miniCheckMark}>✓</Text> : null}
+                      </View>
+                      <Text style={[s.doneChipText, ex.completed && s.doneChipTextOn]}>Done</Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
                 <View style={s.metricRow}>
                   <View style={s.darkMetric}>
@@ -135,11 +175,37 @@ export default function WorkoutDetail() {
 }
 
 function ProgressRing({ pct }: { pct: number }) {
+  const size = 180;
+  const stroke = 12;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, pct));
+  const offset = c - (clamped / 100) * c;
   return (
     <View style={{ alignItems: "center", marginTop: 12 }}>
-      <View style={s.ringOuter}>
-        <View style={[s.ringProgress, { borderColor: theme.colors.brand, opacity: 0.25 + (clamped / 100) * 0.75 }]} />
+      <View style={{ width: size, height: size }}>
+        <Svg width={size} height={size}>
+          <Defs>
+            <LinearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0%" stopColor="#FF8A6B" />
+              <Stop offset="100%" stopColor="#FF6B4E" />
+            </LinearGradient>
+          </Defs>
+          <Circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.12)" strokeWidth={stroke} fill="none" />
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            stroke="url(#ringGrad)"
+            strokeWidth={stroke}
+            fill="none"
+            strokeDasharray={`${c} ${c}`}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+            rotation="-90"
+            origin={`${size / 2}, ${size / 2}`}
+          />
+        </Svg>
         <View style={s.ringInner}>
           <Text style={s.ringPct}>{clamped}%</Text>
           <Text style={s.ringSub}>Of workout completed!</Text>
@@ -177,14 +243,9 @@ const s = StyleSheet.create({
   delete: { color: theme.colors.danger, fontWeight: "700", fontSize: 15 },
   workoutName: { textAlign: "center", color: theme.colors.white, fontSize: 18, fontWeight: "800", paddingHorizontal: 16 },
   dateLine: { textAlign: "center", color: "rgba(255,255,255,0.5)", fontSize: 12, marginTop: 10, marginBottom: 8 },
-  ringOuter: {
-    width: 180, height: 180, borderRadius: 90, borderWidth: 12, borderColor: "rgba(255,255,255,0.12)",
-    alignItems: "center", justifyContent: "center",
+  ringInner: {
+    ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", paddingHorizontal: 16,
   },
-  ringProgress: {
-    ...StyleSheet.absoluteFillObject, borderRadius: 90, borderWidth: 12,
-  },
-  ringInner: { alignItems: "center", justifyContent: "center", paddingHorizontal: 16 },
   ringPct: { fontSize: 40, fontWeight: "800", color: theme.colors.white },
   ringSub: { marginTop: 4, fontSize: 11, color: "rgba(255,255,255,0.65)", textAlign: "center", maxWidth: 110 },
   sheet: {
@@ -200,8 +261,22 @@ const s = StyleSheet.create({
   insightLabel: { marginTop: 2, fontSize: 11, color: theme.colors.onSheetMuted, fontWeight: "600" },
   sectionTitle: { marginTop: 22, marginBottom: 10, fontSize: 18, fontWeight: "800", color: theme.colors.onSheet },
   whiteCard: { backgroundColor: theme.colors.white, borderRadius: theme.radius.lg, padding: 14, marginBottom: 10 },
+  whiteCardDone: { borderWidth: 2, borderColor: "rgba(255,107,78,0.45)" },
   exTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   exName: { fontSize: 15, fontWeight: "700", color: theme.colors.onSheet, flex: 1 },
+  doneChip: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: theme.radius.full, backgroundColor: "#F0F1F3",
+  },
+  doneChipOn: { backgroundColor: theme.colors.brand },
+  doneChipText: { fontSize: 12, fontWeight: "800", color: theme.colors.onSheetMuted },
+  doneChipTextOn: { color: theme.colors.white },
+  miniCheck: {
+    width: 16, height: 16, borderRadius: 4, borderWidth: 2, borderColor: "#9CA3AF",
+    alignItems: "center", justifyContent: "center",
+  },
+  miniCheckOn: { borderColor: theme.colors.white, backgroundColor: theme.colors.white },
+  miniCheckMark: { color: theme.colors.brand, fontSize: 10, fontWeight: "800", lineHeight: 12 },
   metricRow: { flexDirection: "row", gap: 8, marginTop: 10 },
   darkMetric: {
     flex: 1, flexDirection: "row", alignItems: "center", gap: 8,

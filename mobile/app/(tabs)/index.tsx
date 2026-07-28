@@ -1,197 +1,245 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
-  View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ScrollView,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl, Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
+import Svg, { Path, Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 import { supabase } from "@/lib/supabase";
 import { theme } from "@/lib/theme";
-import {
-  Workout, WORKOUT_TYPES, typeMeta, formatDate, formatDuration, WorkoutType,
-} from "@/lib/types";
+import { Workout, typeMeta, formatDuration, totalVolume } from "@/lib/types";
 
-export default function WorkoutsList() {
+function startOfWeek(d: Date): Date {
+  const x = new Date(d);
+  const day = (x.getDay() + 6) % 7;
+  x.setDate(x.getDate() - day);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+export default function HomeDashboard() {
   const router = useRouter();
+  const [email, setEmail] = useState("");
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [type, setType] = useState<WorkoutType | "">("");
-  const [status, setStatus] = useState<"" | "completed" | "incomplete">("");
 
   const load = useCallback(async () => {
     setLoading(true);
-    let q = supabase
-      .from("workouts")
-      .select("*, exercises(*, exercise_sets(*))")
-      .order("workout_date", { ascending: false })
-      .order("created_at", { ascending: false });
-
-    if (search.trim()) q = q.ilike("name", `%${search.trim()}%`);
-    if (type) q = q.eq("workout_type", type);
-    if (status === "completed") q = q.eq("completed", true);
-    if (status === "incomplete") q = q.eq("completed", false);
-
-    const { data } = await q.limit(100);
+    const [{ data: u }, { data }] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase.from("workouts").select("*, exercises(*, exercise_sets(*))").order("workout_date", { ascending: false }).limit(300),
+    ]);
+    setEmail(u.user?.email ?? "");
     setWorkouts((data ?? []) as Workout[]);
     setLoading(false);
-  }, [search, type, status]);
+  }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const weekCount = workouts.filter((w) => {
-    const d = new Date(w.workout_date + "T00:00:00");
-    const now = new Date();
-    const start = new Date(now);
-    start.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-    start.setHours(0, 0, 0, 0);
-    return d >= start;
-  }).length;
+  const name = (email || "Athlete").split("@")[0];
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const weekStart = startOfWeek(new Date());
+
+  const completed = workouts.filter((w) => w.completed).length;
+  const calories = workouts.reduce((s, w) => s + (w.calories_burned ?? 0), 0);
+  const volume = workouts.reduce((s, w) => s + totalVolume(w.exercises), 0);
+  const thisWeek = workouts.filter((w) => new Date(w.workout_date + "T00:00:00") >= weekStart).length;
+  const todayWorkouts = workouts.filter((w) => w.workout_date === todayStr);
+  const recent = workouts.slice(0, 5);
+  const sheetList = todayWorkouts.length > 0 ? todayWorkouts : recent;
+
+  const weeks = useMemo(() => {
+    const out: { label: string; value: number }[] = [];
+    for (let i = 7; i >= 0; i--) {
+      const ws = new Date(weekStart);
+      ws.setDate(ws.getDate() - i * 7);
+      const we = new Date(ws);
+      we.setDate(we.getDate() + 7);
+      const count = workouts.filter((w) => {
+        const d = new Date(w.workout_date + "T00:00:00");
+        return d >= ws && d < we;
+      }).length;
+      out.push({
+        label: ws.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        value: count,
+      });
+    }
+    return out;
+  }, [workouts, weekStart]);
 
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
-      <View style={s.header}>
-        <View style={s.titleRow}>
-          <Text style={s.titleIcon}>🏋️</Text>
-          <View>
-            <Text style={s.title}>Workout Plans</Text>
-            <Text style={s.subtitle}>{workouts.length} sessions · {weekCount} this week</Text>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 40 }}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.brand} />}
+      >
+        <View style={s.header}>
+          <View style={s.welcomeRow}>
+            <View style={s.avatar}><Text style={s.avatarText}>{name.charAt(0).toUpperCase()}</Text></View>
+            <View>
+              <Text style={s.welcome}>Welcome Back</Text>
+              <Text style={s.name}>{name}</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={s.newBtn} onPress={() => router.push("/(tabs)/new")}>
+            <Text style={s.newBtnText}>+ Log</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={s.highlightRow}>
+          <View style={s.highlightCard}>
+            <Text style={s.highlightIcon}>🏋️</Text>
+            <Text style={s.highlightValue}>{completed}</Text>
+            <Text style={s.highlightLabel}>Workouts Completed</Text>
+          </View>
+          <View style={s.highlightCard}>
+            <Text style={s.highlightIcon}>🔥</Text>
+            <Text style={s.highlightValue}>{calories.toLocaleString()}</Text>
+            <Text style={s.highlightLabel}>Calories Burnt</Text>
           </View>
         </View>
-        <TouchableOpacity style={s.newBtn} onPress={() => router.push("/(tabs)/new")}>
-          <Text style={s.newBtnText}>+ New</Text>
-        </TouchableOpacity>
-      </View>
 
-      <View style={s.tabs}>
-        <Text style={[s.tab, s.tabActive]}>Explore</Text>
-        <Text style={s.tab}>Your Plans</Text>
-      </View>
-
-      <View style={s.searchRow}>
-        <View style={s.searchWrap}>
-          <Text style={s.searchIcon}>⌕</Text>
-          <TextInput
-            style={s.search}
-            placeholder="Search"
-            placeholderTextColor={theme.colors.ink400}
-            value={search}
-            onChangeText={setSearch}
-            onSubmitEditing={load}
-            returnKeyType="search"
-          />
-          <Text style={s.filterIcon}>☰</Text>
+        <View style={s.statRow}>
+          <MiniStat label="This week" value={String(thisWeek)} />
+          <MiniStat label="Volume (kg)" value={volume.toLocaleString()} />
+          <MiniStat label="Total" value={String(workouts.length)} />
         </View>
-      </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterScroll} contentContainerStyle={s.filterRow}>
-        <Chip label="All types" active={type === ""} onPress={() => setType("")} />
-        {WORKOUT_TYPES.map((t) => (
-          <Chip key={t.value} label={`${t.icon} ${t.label}`} active={type === t.value} onPress={() => setType(type === t.value ? "" : t.value)} />
-        ))}
-        <View style={s.sep} />
-        <Chip label="✓ Done" active={status === "completed"} onPress={() => setStatus(status === "completed" ? "" : "completed")} />
-        <Chip label="In progress" active={status === "incomplete"} onPress={() => setStatus(status === "incomplete" ? "" : "incomplete")} />
+        <View style={s.chartCard}>
+          <View style={s.chartHead}>
+            <Text style={s.chartTitle}>Training Volume</Text>
+            <Text style={s.chartSub}>Last 8 weeks</Text>
+          </View>
+          <WeeklyChart data={weeks} />
+        </View>
+
+        <View style={s.sheet}>
+          <View style={s.sheetHead}>
+            <Text style={s.sheetTitle}>{todayWorkouts.length > 0 ? "Today's Workouts" : "Recent Workouts"}</Text>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/workouts")}>
+              <Text style={s.seeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          {sheetList.length === 0 ? (
+            <Text style={s.emptySheet}>No workouts yet. Log your first session.</Text>
+          ) : sheetList.map((w) => {
+            const meta = typeMeta(w.workout_type);
+            const exCount = w.exercises?.length ?? 0;
+            return (
+              <TouchableOpacity key={w.id} style={s.row} onPress={() => router.push(`/workout/${w.id}`)} activeOpacity={0.85}>
+                <View style={s.rowIcon}><Text style={{ fontSize: 20 }}>{meta.icon}</Text></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.rowTitle} numberOfLines={1}>{w.name}</Text>
+                  <Text style={s.rowMeta}>
+                    {exCount} {exCount === 1 ? "exercise" : "exercises"}
+                    {w.duration_minutes != null ? ` · ${formatDuration(w.duration_minutes)}` : ""}
+                  </Text>
+                </View>
+                <View style={s.play}><Text style={s.playText}>▶</Text></View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </ScrollView>
-
-      <FlatList
-        data={workouts}
-        keyExtractor={(w) => w.id}
-        numColumns={2}
-        columnWrapperStyle={{ gap: 12 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 12 }}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={theme.colors.brand} />}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={s.empty}>
-              <Text style={s.emptyIcon}>🏋️</Text>
-              <Text style={s.emptyTitle}>No workouts found</Text>
-              <Text style={s.emptyText}>Log your first session to get started.</Text>
-            </View>
-          ) : null
-        }
-        renderItem={({ item }) => <WorkoutTile workout={item} onPress={() => router.push(`/workout/${item.id}`)} />}
-      />
     </SafeAreaView>
   );
 }
 
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <TouchableOpacity onPress={onPress} style={[s.chip, active && s.chipActive]}>
-      <Text style={[s.chipText, active && s.chipTextActive]}>{label}</Text>
-    </TouchableOpacity>
+    <View style={s.miniStat}>
+      <Text style={s.miniValue}>{value}</Text>
+      <Text style={s.miniLabel}>{label}</Text>
+    </View>
   );
 }
 
-function WorkoutTile({ workout, onPress }: { workout: Workout; onPress: () => void }) {
-  const meta = typeMeta(workout.workout_type);
-  const hasPR = workout.exercises?.some((e) => e.is_pr);
+function WeeklyChart({ data }: { data: { label: string; value: number }[] }) {
+  const width = Dimensions.get("window").width - 64;
+  const height = 120;
+  const max = Math.max(1, ...data.map((d) => d.value));
+  const padX = 8;
+  const padY = 16;
+  const points = data.map((d, i) => {
+    const x = padX + (i / Math.max(1, data.length - 1)) * (width - padX * 2);
+    const y = height - padY - (d.value / max) * (height - padY * 2);
+    return { x, y, ...d };
+  });
+  const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+  const area = `${line} L ${points[points.length - 1]?.x ?? 0},${height} L ${points[0]?.x ?? 0},${height} Z`;
+  const active = points[Math.min(points.length - 1, Math.floor(points.length / 2))];
+
   return (
-    <TouchableOpacity style={s.tile} onPress={onPress} activeOpacity={0.85}>
-      <View style={s.tileHero}>
-        <Text style={s.tileEmoji}>{meta.icon}</Text>
-        <View style={s.tileOverlay}>
-          <Text style={s.tileBadge}>{meta.label}</Text>
-          {workout.duration_minutes != null && (
-            <Text style={s.tileBadge}>{formatDuration(workout.duration_minutes)}</Text>
-          )}
-        </View>
+    <View>
+      <Svg width={width} height={height}>
+        <Defs>
+          <LinearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor="#FF6B4E" stopOpacity="0.35" />
+            <Stop offset="100%" stopColor="#FF6B4E" stopOpacity="0" />
+          </LinearGradient>
+        </Defs>
+        <Path d={area} fill="url(#fill)" />
+        <Path d={line} stroke="#FF6B4E" strokeWidth={2.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        {active && <Circle cx={active.x} cy={active.y} r={5} fill="#FF6B4E" />}
+      </Svg>
+      <View style={s.chartLabels}>
+        {data.map((d, i) => (
+          <Text key={i} style={s.chartLabel}>{d.label}</Text>
+        ))}
       </View>
-      <Text style={s.tileTitle} numberOfLines={1}>{workout.name}</Text>
-      <Text style={s.tileMeta} numberOfLines={1}>
-        {formatDate(workout.workout_date)}{hasPR ? " · ★ PR" : ""}
-      </Text>
-      <Text style={s.tileSub} numberOfLines={1}>
-        {workout.completed ? "Completed" : "In progress"}
-        {(workout.muscle_groups ?? [])[0] ? ` · ${(workout.muscle_groups ?? [])[0]}` : ""}
-      </Text>
-    </TouchableOpacity>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.bg },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  titleIcon: { fontSize: 22 },
-  title: { fontSize: 22, fontWeight: "800", color: theme.colors.ink900 },
-  subtitle: { color: theme.colors.ink500, fontSize: 12, marginTop: 2 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 },
+  welcomeRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  avatar: {
+    width: 52, height: 52, borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.brand, alignItems: "center", justifyContent: "center",
+  },
+  avatarText: { fontSize: 22, fontWeight: "800", color: theme.colors.white },
+  welcome: { fontSize: 13, color: theme.colors.ink500 },
+  name: { fontSize: 20, fontWeight: "800", color: theme.colors.ink900, textTransform: "capitalize" },
   newBtn: { backgroundColor: theme.colors.brand, paddingHorizontal: 16, paddingVertical: 10, borderRadius: theme.radius.full },
   newBtnText: { color: theme.colors.white, fontWeight: "700" },
-  tabs: { flexDirection: "row", gap: 22, paddingHorizontal: 16, paddingTop: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.ink200 },
-  tab: { paddingBottom: 10, color: theme.colors.ink400, fontWeight: "600", fontSize: 14 },
-  tabActive: { color: theme.colors.ink900, borderBottomWidth: 2, borderBottomColor: theme.colors.ink900 },
-  searchRow: { paddingHorizontal: 16, paddingTop: 14 },
-  searchWrap: {
-    flexDirection: "row", alignItems: "center", backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.full, paddingHorizontal: 14, gap: 8,
+  highlightRow: { flexDirection: "row", gap: 12, paddingHorizontal: 16 },
+  highlightCard: { flex: 1, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: 16, ...theme.shadow },
+  highlightIcon: { fontSize: 22, marginBottom: 8 },
+  highlightValue: { fontSize: 26, fontWeight: "800", color: theme.colors.ink900 },
+  highlightLabel: { marginTop: 4, fontSize: 12, color: theme.colors.ink500, fontWeight: "600" },
+  statRow: { flexDirection: "row", gap: 10, paddingHorizontal: 16, marginTop: 12 },
+  miniStat: { flex: 1, backgroundColor: theme.colors.surface, borderRadius: theme.radius.md, padding: 12 },
+  miniValue: { fontSize: 18, fontWeight: "800", color: theme.colors.brand },
+  miniLabel: { marginTop: 2, fontSize: 10, fontWeight: "700", color: theme.colors.ink500, textTransform: "uppercase" },
+  chartCard: { marginTop: 16, marginHorizontal: 16, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: 16, ...theme.shadow },
+  chartHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  chartTitle: { fontSize: 16, fontWeight: "800", color: theme.colors.ink900 },
+  chartSub: { fontSize: 12, color: theme.colors.ink500, fontWeight: "600" },
+  chartLabels: { flexDirection: "row", justifyContent: "space-between", marginTop: 4 },
+  chartLabel: { flex: 1, textAlign: "center", fontSize: 9, color: theme.colors.ink400 },
+  sheet: {
+    marginTop: 20, backgroundColor: theme.colors.sheet, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 20, minHeight: 280,
   },
-  searchIcon: { color: theme.colors.ink400, fontSize: 16 },
-  search: { flex: 1, paddingVertical: 12, fontSize: 15, color: theme.colors.ink900 },
-  filterIcon: { color: theme.colors.ink400, fontSize: 14, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: theme.colors.ink200 },
-  filterScroll: { maxHeight: 52, marginTop: 12 },
-  filterRow: { paddingHorizontal: 16, gap: 8, alignItems: "center" },
-  sep: { width: 1, height: 22, backgroundColor: theme.colors.ink200, marginHorizontal: 4 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: theme.radius.full, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.ink200 },
-  chipActive: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
-  chipText: { fontSize: 13, fontWeight: "600", color: theme.colors.ink600 },
-  chipTextActive: { color: theme.colors.white },
-  tile: { flex: 1, maxWidth: "48%" },
-  tileHero: {
-    height: 140, borderRadius: theme.radius.lg, backgroundColor: theme.colors.surface,
-    overflow: "hidden", justifyContent: "flex-end", ...theme.shadow,
+  sheetHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+  sheetTitle: { fontSize: 18, fontWeight: "800", color: theme.colors.onSheet },
+  seeAll: { fontSize: 14, fontWeight: "700", color: theme.colors.brand },
+  emptySheet: { color: theme.colors.onSheetMuted, fontSize: 14 },
+  row: {
+    flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: theme.colors.white,
+    borderRadius: theme.radius.lg, padding: 12, marginBottom: 10,
   },
-  tileEmoji: { position: "absolute", alignSelf: "center", top: "28%", fontSize: 42 },
-  tileOverlay: {
-    flexDirection: "row", justifyContent: "space-between", padding: 10,
-    backgroundColor: "rgba(0,0,0,0.35)",
+  rowIcon: {
+    width: 48, height: 48, borderRadius: theme.radius.full, backgroundColor: "#F0F1F4",
+    alignItems: "center", justifyContent: "center",
   },
-  tileBadge: { color: theme.colors.white, fontSize: 11, fontWeight: "700" },
-  tileTitle: { marginTop: 8, fontSize: 14, fontWeight: "700", color: theme.colors.ink900 },
-  tileMeta: { marginTop: 2, fontSize: 11, color: theme.colors.ink500 },
-  tileSub: { marginTop: 2, fontSize: 11, color: theme.colors.ink400 },
-  empty: { alignItems: "center", paddingTop: 80, width: "100%" },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyTitle: { fontSize: 18, fontWeight: "700", color: theme.colors.ink900 },
-  emptyText: { color: theme.colors.ink500, marginTop: 4 },
+  rowTitle: { fontSize: 15, fontWeight: "700", color: theme.colors.onSheet },
+  rowMeta: { marginTop: 2, fontSize: 12, color: theme.colors.onSheetMuted },
+  play: {
+    width: 36, height: 36, borderRadius: theme.radius.full, backgroundColor: theme.colors.brand,
+    alignItems: "center", justifyContent: "center",
+  },
+  playText: { color: theme.colors.white, fontSize: 12, fontWeight: "800" },
 });

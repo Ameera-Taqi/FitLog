@@ -28,7 +28,8 @@
     "plugins": ["expo-router"],
     "extra": {
       "supabaseUrl": "https://vssmililwzwmtnlkszix.supabase.co",
-      "supabaseAnonKey": "sb_publishable_6_87WV3GX9y2HkEZ3Xd3kw_MxXbOkiD"
+      "supabaseAnonKey": "sb_publishable_6_87WV3GX9y2HkEZ3Xd3kw_MxXbOkiD",
+      "apiUrl": "http://192.168.8.92:3002"
     }
   }
 }

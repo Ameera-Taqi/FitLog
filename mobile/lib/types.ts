@@ -20,6 +20,7 @@ export interface Exercise {
   name: string;
   position: number;
   is_pr: boolean;
+  completed?: boolean;
   distance_km: number | null;
   duration_seconds: number | null;
   notes: string | null;
@@ -46,6 +47,16 @@ export interface Workout {
   created_at: string;
   updated_at: string;
   exercises?: Exercise[];
+  progress_photos?: ProgressPhoto[];
+}
+
+export interface ProgressPhoto {
+  id: string;
+  workout_id?: string | null;
+  user_id?: string;
+  storage_path: string;
+  caption?: string | null;
+  created_at?: string;
 }
 
 export const WORKOUT_TYPES: { value: WorkoutType; label: string; icon: string }[] = [
@@ -67,7 +78,7 @@ export const DIFFICULTIES: { value: Difficulty; label: string }[] = [
 ];
 export const MUSCLE_GROUPS = [
   "Chest", "Back", "Shoulders", "Biceps", "Triceps", "Forearms",
-  "Core", "Abs", "Quads", "Hamstrings", "Glutes", "Calves", "Full body", "Cardio",
+  "Core", "Abs", "Legs", "Quads", "Hamstrings", "Glutes", "Calves", "Full body", "Cardio",
 ];
 
 export function typeMeta(t: WorkoutType) {

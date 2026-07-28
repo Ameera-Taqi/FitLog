@@ -35,7 +35,9 @@ export default function Login() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={s.flex}>
         <View style={s.container}>
           <View style={s.logoWrap}>
-            <View style={s.logoBadge}><Text style={s.logoIcon}>🏋️</Text></View>
+            <View style={s.logoBadge}>
+              <Text style={{ color: theme.colors.white, fontSize: 22, fontWeight: "800" }}>≡</Text>
+            </View>
             <Text style={s.logoText}>Fit<Text style={{ color: theme.colors.brand }}>Log</Text></Text>
             <Text style={s.tagline}>Your training log, sets & PRs — all in one place.</Text>
           </View>

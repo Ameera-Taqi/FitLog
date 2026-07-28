@@ -3,8 +3,16 @@ import type { Workout } from "@/lib/types";
 import { workoutTypeMeta } from "@/lib/constants";
 import { formatDate, formatDuration } from "@/lib/format";
 import { getT } from "@/lib/i18n/server";
+import { resolveHeroSrc } from "@/lib/workout-hero";
 
-export async function WorkoutCard({ workout }: { workout: Workout }) {
+export async function WorkoutCard({
+  workout,
+  heroImageUrl,
+}: {
+  workout: Workout;
+  /** Signed URL of the workout's progress photo, if any. */
+  heroImageUrl?: string | null;
+}) {
   const { t } = await getT();
   const type = workoutTypeMeta(workout.workout_type);
   const exCount = workout.exercises?.length ?? 0;
@@ -12,14 +20,41 @@ export async function WorkoutCard({ workout }: { workout: Workout }) {
     workout.exercises?.reduce((s, e) => s + (e.exercise_sets?.length ?? 0), 0) ?? 0;
   const hasPR = workout.exercises?.some((e) => e.is_pr);
   const muscles = workout.muscle_groups ?? [];
+  const heroSrc = resolveHeroSrc(heroImageUrl);
+  const hasUserPhoto = Boolean(heroImageUrl?.trim());
 
   return (
     <Link
       href={`/workouts/${workout.id}`}
       className="card group block overflow-hidden transition hover:-translate-y-0.5 hover:shadow-cardhover"
     >
-      <div className="relative h-28 bg-gradient-to-br from-brand-500/30 via-surface2 to-accent-500/20 sm:h-32">
-        <div className="absolute inset-0 flex items-end justify-between p-3">
+      <div className="relative aspect-[16/10] overflow-hidden bg-[#12141A] sm:aspect-[16/9]">
+        {hasUserPhoto ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={heroSrc}
+            alt=""
+            className="absolute inset-0 h-full w-full max-w-none object-cover object-top transition duration-300 group-hover:scale-[1.03]"
+            style={{ objectFit: "cover", objectPosition: "center top" }}
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`${heroSrc}?v=2`}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover object-center scale-[1.14] transition duration-300 group-hover:scale-[1.18]"
+          />
+        )}
+        {/* Soft edges keep overlays readable; subject stays centered in the safe area */}
+        <div
+          className={`pointer-events-none absolute inset-0 ${
+            hasUserPhoto
+              ? "bg-gradient-to-t from-black/65 via-black/10 to-black/15"
+              : "bg-gradient-to-t from-black/55 via-transparent to-transparent"
+          }`}
+        />
+        {/* Safe area guide for badges — bottom/corner overlays sit outside the visual focus */}
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-3">
           <span className="rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
             {t(`enum.wtype.${workout.workout_type}`)}
           </span>
@@ -29,7 +64,7 @@ export async function WorkoutCard({ workout }: { workout: Workout }) {
             </span>
           )}
         </div>
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl opacity-80 transition group-hover:scale-110">
+        <span className="absolute end-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-black/35 text-lg backdrop-blur-sm">
           {type.icon}
         </span>
       </div>

@@ -42,11 +42,17 @@ create table if not exists public.exercises (
   name         text not null,
   position     integer not null default 0,
   is_pr        boolean not null default false,
+  difficulty   text check (difficulty is null or difficulty in ('easy','moderate','hard','very_hard','max_effort')),
+  completed    boolean not null default false,
   distance_km  numeric(8,3) check (distance_km is null or distance_km >= 0),
   duration_seconds integer check (duration_seconds is null or duration_seconds >= 0),
   notes        text,
   created_at   timestamptz not null default now()
 );
+
+-- If upgrading an existing DB that already has public.exercises:
+--   alter table public.exercises add column if not exists difficulty text;
+--   alter table public.exercises add column if not exists completed boolean not null default false;
 
 -- EXERCISE SETS -------------------------------------------------------
 create table if not exists public.exercise_sets (
@@ -126,3 +132,49 @@ create policy "photos - user read own"   on storage.objects for select using (bu
 create policy "photos - user upload own" on storage.objects for insert with check (bucket_id = 'progress-photos' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "photos - user update own" on storage.objects for update using (bucket_id = 'progress-photos' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "photos - user delete own" on storage.objects for delete using (bucket_id = 'progress-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- WORKOUT HERO IMAGES (fal.ai cache, shared by workout name) ----------
+create table if not exists public.workout_hero_images (
+  id            uuid primary key default gen_random_uuid(),
+  workout_name  text not null,
+  name_key      text not null,
+  workout_type  text not null,
+  prompt        text not null,
+  image_url     text not null,
+  created_at    timestamptz not null default now(),
+  constraint workout_hero_images_name_key_unique unique (name_key)
+);
+
+create index if not exists idx_workout_hero_images_name_key
+  on public.workout_hero_images (name_key);
+
+alter table public.workout_hero_images enable row level security;
+
+create policy "heroes - authenticated read"
+  on public.workout_hero_images for select
+  to authenticated
+  using (true);
+
+create policy "heroes - authenticated insert"
+  on public.workout_hero_images for insert
+  to authenticated
+  with check (true);
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'workout-heroes',
+  'workout-heroes',
+  true,
+  10485760,
+  array['image/jpeg', 'image/png', 'image/webp']
+)
+on conflict (id) do nothing;
+
+create policy "heroes bucket - public read"
+  on storage.objects for select
+  using (bucket_id = 'workout-heroes');
+
+create policy "heroes bucket - auth upload"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'workout-heroes');

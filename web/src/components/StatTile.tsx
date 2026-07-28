@@ -17,14 +17,19 @@ export function StatTile({
       : accent === "ink"
         ? "bg-ink-100 text-ink-500"
         : "bg-brand-500/15 text-brand-400";
+
   return (
-    <div className="card p-4 sm:p-5">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">{label}</p>
-        {icon && <span className={`grid h-9 w-9 place-items-center rounded-xl ${accentBg}`}>{icon}</span>}
+    <div className="card flex h-full items-center gap-4 p-4 sm:p-5">
+      {icon && (
+        <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${accentBg}`}>
+          {icon}
+        </span>
+      )}
+      <div className="min-w-0">
+        <p className="text-2xl font-extrabold tabular-nums tracking-tight text-ink-900">{value}</p>
+        <p className="mt-0.5 text-xs font-medium text-ink-500">{label}</p>
+        {sub && <p className="mt-0.5 truncate text-xs text-ink-400">{sub}</p>}
       </div>
-      <p className="mt-2 text-2xl font-extrabold tabular-nums tracking-tight text-ink-900 sm:text-3xl">{value}</p>
-      {sub && <p className="mt-1 text-xs text-ink-400">{sub}</p>}
     </div>
   );
 }

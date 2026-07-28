@@ -33,24 +33,24 @@ export function FilterBar() {
   ].filter((k) => params.get(k)).length;
 
   return (
-    <div className="card p-3 sm:p-4">
-      {/* Search row */}
+    <div className="space-y-3">
+      {/* Search row — pill style matching mobile */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <span className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-ink-400">
+          <span className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-ink-400">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
           </span>
           <input
             defaultValue={get("search")}
             onKeyDown={(e) => { if (e.key === "Enter") apply({ search: (e.target as HTMLInputElement).value }); }}
             onBlur={(e) => { if (e.target.value !== get("search")) apply({ search: e.target.value }); }}
-            placeholder={t("filter.searchPlaceholder")}
-            className="input ps-9"
+            placeholder="Search"
+            className="input rounded-full ps-10"
           />
         </div>
         <button
           onClick={() => setOpen((o) => !o)}
-          className={`btn-secondary shrink-0 ${activeCount ? "ring-brand-300 text-brand-700" : ""}`}
+          className={`btn-secondary shrink-0 ${activeCount ? "ring-brand-500/40 text-brand-400" : ""}`}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
           {t("filter.filters")}{activeCount ? ` (${activeCount})` : ""}
@@ -58,7 +58,7 @@ export function FilterBar() {
       </div>
 
       {open && (
-        <div className="mt-4 grid grid-cols-1 gap-3 border-t border-ink-100 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="card mt-1 grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label={t("filter.exerciseName")}>
             <input
               defaultValue={get("exercise")}

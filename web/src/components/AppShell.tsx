@@ -11,6 +11,7 @@ const NAV = [
   { href: "/dashboard", labelKey: "nav.dashboard", icon: DashIcon },
   { href: "/workouts", labelKey: "nav.workouts", icon: ListIcon },
   { href: "/workouts/new", labelKey: "nav.log", icon: PlusIcon },
+  { href: "/profile", labelKey: "nav.profile", icon: UserIcon },
 ];
 
 export function AppShell({
@@ -34,10 +35,10 @@ export function AppShell({
   const isActive = (href: string) =>
     href === "/workouts"
       ? pathname === "/workouts" || (pathname.startsWith("/workouts/") && pathname !== "/workouts/new")
-      : pathname === href;
+      : pathname === href || (href === "/dashboard" && pathname === "/");
 
   return (
-    <div className="min-h-screen pb-24 sm:pb-0">
+    <div className="min-h-screen pb-24 md:pb-0">
       <header className="sticky top-0 z-30 border-b border-ink-100/80 bg-ink-50/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href="/dashboard" aria-label={t("nav.home")}>
@@ -92,7 +93,7 @@ export function AppShell({
       <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-ink-100/80 bg-surface/95 backdrop-blur-xl md:hidden">
-        <div className="mx-auto grid max-w-lg grid-cols-5 px-1 pb-[env(safe-area-inset-bottom)]">
+        <div className="mx-auto grid max-w-lg grid-cols-4 px-1 pb-[env(safe-area-inset-bottom)]">
           {NAV.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -111,23 +112,6 @@ export function AppShell({
               </Link>
             );
           })}
-          <Link
-            href="/profile"
-            className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold ${
-              pathname === "/profile" ? "text-brand-500" : "text-ink-400"
-            }`}
-          >
-            <span className={`grid h-8 w-8 place-items-center rounded-xl ${pathname === "/profile" ? "bg-brand-500/15" : ""}`}>
-              <UserIcon className="h-5 w-5" />
-            </span>
-            {t("nav.profile")}
-          </Link>
-          <button onClick={signOut} className="flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold text-ink-400">
-            <span className="grid h-8 w-8 place-items-center rounded-xl">
-              <LogoutIcon className="h-5 w-5" />
-            </span>
-            {t("nav.signOut")}
-          </button>
         </div>
       </nav>
     </div>
@@ -160,13 +144,6 @@ function UserIcon({ className = "" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
-function LogoutIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
     </svg>
   );
 }

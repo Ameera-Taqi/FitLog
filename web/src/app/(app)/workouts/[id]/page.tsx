@@ -7,6 +7,7 @@ import { formatDate, formatDuration, formatSeconds, timeFromTimestamp, totalVolu
 import { getMyUnit } from "@/lib/profile";
 import { getT } from "@/lib/i18n/server";
 import { DeleteWorkoutButton } from "@/components/DeleteWorkoutButton";
+import { ExerciseCompleteToggle } from "@/components/ExerciseCompleteToggle";
 import { PhotoManager, type PhotoItem } from "@/components/PhotoManager";
 
 export const dynamic = "force-dynamic";
@@ -65,17 +66,13 @@ export default async function WorkoutDetailPage({ params }: { params: { id: stri
   const volume = totalVolume(exercises);
   const volumeDisplay = volume ? `${Math.round(kgToUnit(volume, unit)).toLocaleString()} ${unit}` : "—";
   const totalSets = exercises.reduce((s, e) => s + (e.exercise_sets?.length ?? 0), 0);
-  const completedSets = exercises.reduce(
-    (s, e) => s + (e.exercise_sets?.filter((st) => st.completed).length ?? 0),
-    0,
-  );
   const mood = moodMeta(w.mood_after);
-  const pct = w.completed
-    ? 100
-    : totalSets > 0
-      ? Math.round((completedSets / totalSets) * 100)
-      : exercises.filter((e) => e.completed).length
-        ? Math.round((exercises.filter((e) => e.completed).length / Math.max(1, exercises.length)) * 100)
+  const doneExercises = exercises.filter((e) => e.completed).length;
+  const pct =
+    exercises.length > 0
+      ? Math.round((doneExercises / exercises.length) * 100)
+      : w.completed
+        ? 100
         : 0;
 
   const avgRest =
@@ -135,14 +132,28 @@ export default async function WorkoutDetailPage({ params }: { params: { id: stri
                 exercises.map((ex, i) => {
                   const sets = (ex.exercise_sets ?? []).slice().sort((a, b) => a.set_number - b.set_number);
                   const maxWeight = Math.max(0, ...sets.map((s) => s.weight ?? 0));
+                  const siblings = exercises
+                    .filter((other) => other.id !== ex.id)
+                    .map((other) => Boolean(other.completed));
                   return (
-                    <div key={ex.id ?? i} className="rounded-2xl bg-white p-4 shadow-soft">
+                    <div
+                      key={ex.id ?? i}
+                      className={`rounded-2xl bg-white p-4 shadow-soft transition ${ex.completed ? "ring-2 ring-brand-500/50" : ""}`}
+                    >
                       <div className="mb-3 flex items-center justify-between gap-2">
                         <h3 className="font-bold">
                           Exercise {i + 1} — {ex.name}
                           {ex.is_pr ? " ★" : ""}
                         </h3>
-                        <span className="text-[#9CA3AF]">›</span>
+                        {ex.id ? (
+                          <ExerciseCompleteToggle
+                            key={`${ex.id}-${ex.completed ? "1" : "0"}`}
+                            exerciseId={ex.id}
+                            workoutId={w.id}
+                            initialCompleted={Boolean(ex.completed)}
+                            siblingCompleted={siblings}
+                          />
+                        ) : null}
                       </div>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         <div className="flex items-center gap-3 rounded-2xl bg-[#2A2D36] px-3 py-3 text-white">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator,
 } from "react-native";
@@ -9,10 +9,10 @@ import { theme } from "@/lib/theme";
 import { WORKOUT_TYPES, DIFFICULTIES, MUSCLE_GROUPS, WorkoutType, Difficulty } from "@/lib/types";
 
 interface SetRow { reps: string; weight: string; rest: string }
-interface ExRow { name: string; is_pr: boolean; sets: SetRow[] }
+interface ExRow { name: string; is_pr: boolean; completed: boolean; sets: SetRow[] }
 
 const emptySet = (): SetRow => ({ reps: "", weight: "", rest: "" });
-const emptyEx = (): ExRow => ({ name: "", is_pr: false, sets: [emptySet()] });
+const emptyEx = (): ExRow => ({ name: "", is_pr: false, completed: false, sets: [emptySet()] });
 const num = (v: string) => (v === "" ? null : Number.isFinite(Number(v)) ? Number(v) : null);
 
 export default function NewWorkout() {
@@ -25,9 +25,9 @@ export default function NewWorkout() {
   const [muscles, setMuscles] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState<Difficulty | "">("");
   const [notes, setNotes] = useState("");
-  const [completed, setCompleted] = useState(true);
   const [exercises, setExercises] = useState<ExRow[]>([emptyEx()]);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   function toggleMuscle(m: string) {
     setMuscles((c) => (c.includes(m) ? c.filter((x) => x !== m) : [...c, m]));
@@ -40,13 +40,18 @@ export default function NewWorkout() {
   }
 
   async function save() {
+    if (savingRef.current) return;
     if (!name.trim()) { Alert.alert("Name required", "Please give your workout a name."); return; }
+    savingRef.current = true;
     setSaving(true);
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData.user?.id;
     if (!uid) { setSaving(false); Alert.alert("Session expired", "Please sign in again."); return; }
 
     try {
+      const clean = exercises.filter((e) => e.name.trim());
+      const workoutCompleted = clean.length > 0 && clean.every((ex) => ex.completed);
+
       const { data: w, error: wErr } = await supabase.from("workouts").insert({
         user_id: uid,
         name: name.trim(),
@@ -57,15 +62,18 @@ export default function NewWorkout() {
         muscle_groups: muscles,
         difficulty: difficulty || null,
         notes: notes.trim() || null,
-        completed,
+        completed: workoutCompleted,
       }).select("id").single();
       if (wErr) throw wErr;
 
-      const clean = exercises.filter((e) => e.name.trim());
       for (let i = 0; i < clean.length; i++) {
         const ex = clean[i];
         const { data: exRow, error: exErr } = await supabase.from("exercises").insert({
-          workout_id: w.id, name: ex.name.trim(), position: i, is_pr: ex.is_pr,
+          workout_id: w.id,
+          name: ex.name.trim(),
+          position: i,
+          is_pr: ex.is_pr,
+          completed: ex.completed,
         }).select("id").single();
         if (exErr) throw exErr;
         const sets = ex.sets.filter((st) => st.reps || st.weight).map((st, si) => ({
@@ -82,6 +90,7 @@ export default function NewWorkout() {
       router.push(`/workout/${w.id}`);
     } catch (err: any) {
       Alert.alert("Couldn't save", err?.message ?? "Something went wrong.");
+      savingRef.current = false;
     } finally {
       setSaving(false);
     }
@@ -146,6 +155,11 @@ export default function NewWorkout() {
               )}
             </View>
 
+            <TouchableOpacity style={s.checkRow} onPress={() => setEx(ei, { completed: !ex.completed })}>
+              <View style={[s.checkbox, ex.completed && s.checkboxOn]}>{ex.completed && <Text style={s.checkMark}>✓</Text>}</View>
+              <Text style={s.checkLabel}>Completed</Text>
+            </TouchableOpacity>
+
             <View style={s.setHeaderRow}>
               <Text style={[s.setHead, { width: 24 }]}>#</Text>
               <Text style={[s.setHead, { flex: 1 }]}>Reps</Text>
@@ -182,10 +196,6 @@ export default function NewWorkout() {
           <Field label="Notes">
             <TextInput style={[s.input, { height: 84, textAlignVertical: "top" }]} value={notes} onChangeText={setNotes} multiline placeholder="How did it feel?" placeholderTextColor={theme.colors.ink400} />
           </Field>
-          <TouchableOpacity style={s.checkRow} onPress={() => setCompleted(!completed)}>
-            <View style={[s.checkbox, completed && s.checkboxOn]}>{completed && <Text style={s.checkMark}>✓</Text>}</View>
-            <Text style={s.checkLabel}>Mark workout as completed</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -237,7 +247,7 @@ const s = StyleSheet.create({
   setRow: { flexDirection: "row", gap: 8, alignItems: "center", marginTop: 6 },
   setNum: { fontWeight: "700", color: theme.colors.ink400, textAlign: "center" },
   setInput: { backgroundColor: theme.colors.bg, borderWidth: 1, borderColor: theme.colors.ink200, borderRadius: theme.radius.sm, paddingHorizontal: 8, paddingVertical: 8, textAlign: "center", color: theme.colors.ink900 },
-  checkRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 16, backgroundColor: theme.colors.surface2, padding: 12, borderRadius: theme.radius.md },
+  checkRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12, backgroundColor: theme.colors.surface2, padding: 12, borderRadius: theme.radius.md },
   checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: theme.colors.ink300, alignItems: "center", justifyContent: "center" },
   checkboxOn: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
   checkMark: { color: theme.colors.white, fontWeight: "800", fontSize: 13 },
