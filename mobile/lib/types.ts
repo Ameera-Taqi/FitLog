@@ -50,6 +50,15 @@ export interface Workout {
   progress_photos?: ProgressPhoto[];
 }
 
+export interface WorkoutSchedule {
+  id: string;
+  user_id: string;
+  workout_id: string;
+  scheduled_date: string;
+  created_at: string;
+  workouts?: Workout;
+}
+
 export interface ProgressPhoto {
   id: string;
   workout_id?: string | null;

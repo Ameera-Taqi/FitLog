@@ -178,3 +178,26 @@ create policy "heroes bucket - auth upload"
   on storage.objects for insert
   to authenticated
   with check (bucket_id = 'workout-heroes');
+
+-- WORKOUT SCHEDULES (library workout → calendar day) ------------------
+create table if not exists public.workout_schedules (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references auth.users(id) on delete cascade default auth.uid(),
+  workout_id      uuid not null references public.workouts(id) on delete cascade,
+  scheduled_date  date not null,
+  created_at      timestamptz not null default now(),
+  constraint workout_schedules_unique_day unique (workout_id, scheduled_date)
+);
+
+create index if not exists idx_workout_schedules_user_date
+  on public.workout_schedules (user_id, scheduled_date desc);
+
+create index if not exists idx_workout_schedules_workout
+  on public.workout_schedules (workout_id);
+
+alter table public.workout_schedules enable row level security;
+
+create policy "own schedules - select" on public.workout_schedules for select using (auth.uid() = user_id);
+create policy "own schedules - insert" on public.workout_schedules for insert with check (auth.uid() = user_id);
+create policy "own schedules - update" on public.workout_schedules for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "own schedules - delete" on public.workout_schedules for delete using (auth.uid() = user_id);

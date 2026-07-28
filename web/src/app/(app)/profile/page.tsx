@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "@/components/ProfileForm";
 import type { Profile, Workout } from "@/lib/types";
 import { getT } from "@/lib/i18n/server";
-import { totalVolume } from "@/lib/format";
+import { totalVolume, kgToUnit } from "@/lib/format";
+import { getMyUnit } from "@/lib/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -14,17 +15,23 @@ export default async function ProfilePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [{ data }, { data: workoutsData }, { t }] = await Promise.all([
+  const [{ data }, { data: workoutsData }, { t }, unit] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase.from("workouts").select("*, exercises(*, exercise_sets(*))").limit(500),
     getT(),
+    getMyUnit(),
   ]);
 
   const workouts = (workoutsData ?? []) as Workout[];
+  const volumeKg = workouts.reduce((s, w) => s + totalVolume(w.exercises), 0);
   const stats = {
     total: workouts.length,
-    completed: workouts.filter((w) => w.completed).length,
-    volume: workouts.reduce((s, w) => s + totalVolume(w.exercises), 0),
+    completed: workouts.filter((w) => {
+      if (w.completed) return true;
+      const exs = w.exercises ?? [];
+      return exs.length > 0 && exs.every((e) => e.completed);
+    }).length,
+    volume: Math.round(kgToUnit(volumeKg, unit)).toLocaleString(),
     prs: workouts.reduce((s, w) => s + (w.exercises?.filter((e) => e.is_pr).length ?? 0), 0),
     calories: workouts.reduce((s, w) => s + (w.calories_burned ?? 0), 0),
   };
@@ -52,7 +59,7 @@ export default async function ProfilePage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Stat label="Workouts" value={stats.total} />
           <Stat label="Completed" value={stats.completed} />
-          <Stat label="Volume (kg)" value={stats.volume.toLocaleString()} />
+          <Stat label={`Volume (${unit})`} value={stats.volume} />
           <Stat label="PRs" value={stats.prs} />
           <Stat label="Calories" value={stats.calories.toLocaleString()} />
         </div>

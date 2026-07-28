@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Workout } from "@/lib/types";
 import { workoutTypeMeta } from "@/lib/constants";
-import { formatDate, formatDuration } from "@/lib/format";
+import { formatDuration } from "@/lib/format";
 import { getT } from "@/lib/i18n/server";
 import { resolveHeroSrc } from "@/lib/workout-hero";
 
@@ -72,7 +72,6 @@ export async function WorkoutCard({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className="truncate font-bold text-ink-900">{workout.name}</h3>
-            <p className="text-xs text-ink-500">{formatDate(workout.workout_date)}</p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-1">
             {workout.completed ? (

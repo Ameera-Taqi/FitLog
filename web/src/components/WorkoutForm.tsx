@@ -9,7 +9,6 @@ import {
 import type { Workout, WorkoutType, ExerciseDifficulty, UnitPreference } from "@/lib/types";
 import { kgToUnit, unitToKg, roundForDisplay, todayISO } from "@/lib/format";
 import { useI18n } from "@/lib/i18n/I18nProvider";
-import { MultiDatePicker } from "@/components/MultiDatePicker";
 
 interface ExerciseForm {
   name: string; is_pr: boolean; difficulty: ExerciseDifficulty | ""; completed: boolean;
@@ -46,7 +45,6 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
   const [name, setName] = useState(initial?.name ?? "");
   // Which quick-start template is picked; "other" means a custom, user-typed name.
   const [templateKey, setTemplateKey] = useState<string>("other");
-  const [dates, setDates] = useState<string[]>(initial?.workout_date ? [initial.workout_date] : [todayISO()]);
   const [duration, setDuration] = useState(initial?.duration_minutes?.toString() ?? "");
   const [type, setType] = useState<WorkoutType>(initial?.workout_type ?? "strength");
   const [muscles, setMuscles] = useState<string[]>(initial?.muscle_groups ?? []);
@@ -119,7 +117,6 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
     if (savingRef.current) return;
     setError(null);
     if (!name.trim()) { setError(t("form.errName")); return; }
-    if (dates.length === 0) { setError(t("form.errNoDate")); return; }
     savingRef.current = true;
     setSaving(true);
 
@@ -202,23 +199,19 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
     }
 
     try {
-      // Deduplicate dates so one calendar day never creates two sessions.
-      const sortedDates = [...new Set(dates)].sort();
-      const ids: string[] = [];
+      // Library workout only — schedule days from the Calendar page.
+      const dateStr = initial?.workout_date ?? todayISO();
 
       if (isEdit && initial?.id) {
-        // Update the existing workout to the first date, then add any extra dates as new sessions.
-        const { error: upErr } = await supabase.from("workouts").update(payloadFor(sortedDates[0])).eq("id", initial.id);
+        const { error: upErr } = await supabase.from("workouts").update(payloadFor(dateStr)).eq("id", initial.id);
         if (upErr) throw upErr;
         await supabase.from("exercises").delete().eq("workout_id", initial.id);
         await insertChildren(initial.id);
-        ids.push(initial.id);
-        for (const d of sortedDates.slice(1)) ids.push(await createWorkout(d));
+        router.push(`/workouts/${initial.id}`);
       } else {
-        for (const d of sortedDates) ids.push(await createWorkout(d));
+        const id = await createWorkout(dateStr);
+        router.push(`/workouts/${id}`);
       }
-
-      router.push(ids.length === 1 ? `/workouts/${ids[0]}` : "/workouts");
       router.refresh();
     } catch (err: unknown) {
       savingRef.current = false;
@@ -248,10 +241,6 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
               <input value={name} onChange={(e) => setName(e.target.value)} className="input" placeholder={t("form.namePlaceholder")} required />
             </div>
           )}
-          <div className="sm:col-span-2">
-            <label className="label">{t("form.dates")} *</label>
-            <MultiDatePicker value={dates} onChange={setDates} />
-          </div>
           <div>
             <label className="label">{t("form.duration")}</label>
             <input type="number" min="0" value={duration} onChange={(e) => setDuration(e.target.value)} className="input" placeholder="60" />
@@ -291,10 +280,7 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
 
       {/* Exercises */}
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-black uppercase tracking-tight text-ink-900">{t("form.exercises")}</h2>
-          <button type="button" onClick={addExercise} className="btn-secondary">{t("form.addExercise")}</button>
-        </div>
+        <h2 className="text-lg font-black uppercase tracking-tight text-ink-900">{t("form.exercises")}</h2>
 
         {exercises.map((ex, ei) => (
           <div key={ei} className={`card p-4 transition sm:p-5 ${ex.completed ? "ring-2 ring-brand-500/60" : ""}`}>
@@ -384,30 +370,17 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
                     >
                       ★ {t("form.pr")}
                     </button>
-                    {!isEdit && (
-                      <label
-                        className={`flex cursor-pointer select-none items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold ring-1 ring-inset transition ${
-                          ex.completed
-                            ? "bg-brand-600 text-white ring-brand-600"
-                            : "bg-surface2 text-ink-600 ring-ink-200 hover:bg-ink-100"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={ex.completed}
-                          onChange={(e) => updateExercise(ei, { completed: e.target.checked })}
-                          className="sr-only"
-                        />
-                        <CheckIcon className="h-4 w-4" />
-                        {t("form.completed")}
-                      </label>
-                    )}
                   </div>
                 </div>
               </div>
             </div>
           </div>
         ))}
+        <div className="flex justify-end">
+          <button type="button" onClick={addExercise} className="btn-secondary">
+            {t("form.addExercise")}
+          </button>
+        </div>
         <datalist id="common-exercises">
           {COMMON_EXERCISES.map((n) => <option key={n} value={n} />)}
         </datalist>

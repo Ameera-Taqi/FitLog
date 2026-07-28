@@ -32,10 +32,12 @@ export function AppShell({
     router.refresh();
   }
 
-  const isActive = (href: string) =>
-    href === "/workouts"
-      ? pathname === "/workouts" || (pathname.startsWith("/workouts/") && pathname !== "/workouts/new")
-      : pathname === href || (href === "/dashboard" && pathname === "/");
+  const isActive = (href: string) => {
+    if (href === "/workouts") {
+      return pathname === "/workouts" || (pathname.startsWith("/workouts/") && pathname !== "/workouts/new");
+    }
+    return pathname === href || (href === "/dashboard" && pathname === "/");
+  };
 
   return (
     <div className="min-h-screen pb-24 md:pb-0">

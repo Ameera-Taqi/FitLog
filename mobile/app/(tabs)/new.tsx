@@ -18,7 +18,6 @@ const num = (v: string) => (v === "" ? null : Number.isFinite(Number(v)) ? Numbe
 export default function NewWorkout() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [location, setLocation] = useState("");
   const [duration, setDuration] = useState("");
   const [type, setType] = useState<WorkoutType>("strength");
@@ -52,10 +51,12 @@ export default function NewWorkout() {
       const clean = exercises.filter((e) => e.name.trim());
       const workoutCompleted = clean.length > 0 && clean.every((ex) => ex.completed);
 
+      const workoutDate = new Date().toISOString().slice(0, 10);
+      // Library workout only — schedule days from the Calendar tab.
       const { data: w, error: wErr } = await supabase.from("workouts").insert({
         user_id: uid,
         name: name.trim(),
-        workout_date: date,
+        workout_date: workoutDate,
         location: location.trim() || null,
         duration_minutes: num(duration),
         workout_type: type,
@@ -106,14 +107,9 @@ export default function NewWorkout() {
           <Field label="Workout name *">
             <TextInput style={s.input} value={name} onChangeText={setName} placeholder="e.g. Push Day" placeholderTextColor={theme.colors.ink400} />
           </Field>
-          <View style={s.row2}>
-            <Field label="Date" flex>
-              <TextInput style={s.input} value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" placeholderTextColor={theme.colors.ink400} />
-            </Field>
-            <Field label="Duration (min)" flex>
-              <TextInput style={s.input} value={duration} onChangeText={setDuration} keyboardType="numeric" placeholder="60" placeholderTextColor={theme.colors.ink400} />
-            </Field>
-          </View>
+          <Field label="Duration (min)">
+            <TextInput style={s.input} value={duration} onChangeText={setDuration} keyboardType="numeric" placeholder="60" placeholderTextColor={theme.colors.ink400} />
+          </Field>
           <Field label="Location">
             <TextInput style={s.input} value={location} onChangeText={setLocation} placeholder="e.g. Home gym" placeholderTextColor={theme.colors.ink400} />
           </Field>
@@ -154,11 +150,6 @@ export default function NewWorkout() {
                 <TouchableOpacity onPress={() => setExercises((c) => c.filter((_, idx) => idx !== ei))} style={s.delBtn}><Text style={s.delText}>✕</Text></TouchableOpacity>
               )}
             </View>
-
-            <TouchableOpacity style={s.checkRow} onPress={() => setEx(ei, { completed: !ex.completed })}>
-              <View style={[s.checkbox, ex.completed && s.checkboxOn]}>{ex.completed && <Text style={s.checkMark}>✓</Text>}</View>
-              <Text style={s.checkLabel}>Completed</Text>
-            </TouchableOpacity>
 
             <View style={s.setHeaderRow}>
               <Text style={[s.setHead, { width: 24 }]}>#</Text>

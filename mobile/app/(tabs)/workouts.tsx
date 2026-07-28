@@ -10,6 +10,7 @@ import {
   Workout, WORKOUT_TYPES, typeMeta, formatDate, formatDuration, WorkoutType,
 } from "@/lib/types";
 import { fetchWorkoutPhotoHeroMap } from "@/lib/hero";
+import { CalendarPanel } from "@/components/CalendarPanel";
 
 const fallbackHero = require("../../assets/workout-hero.png");
 
@@ -24,6 +25,10 @@ export default function WorkoutsList() {
   const [status, setStatus] = useState<"" | "completed" | "incomplete">("");
 
   const load = useCallback(async () => {
+    if (tab === "yours") {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     let q = supabase
       .from("workouts")
@@ -33,7 +38,7 @@ export default function WorkoutsList() {
 
     if (search.trim()) q = q.ilike("name", `%${search.trim()}%`);
     if (type) q = q.eq("workout_type", type);
-    if (status === "completed" || tab === "yours") q = q.eq("completed", true);
+    if (status === "completed") q = q.eq("completed", true);
     if (status === "incomplete") q = q.eq("completed", false);
 
     const { data } = await q.limit(100);
@@ -57,23 +62,18 @@ export default function WorkoutsList() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const weekCount = workouts.filter((w) => {
-    const d = new Date(w.workout_date + "T00:00:00");
-    const now = new Date();
-    const start = new Date(now);
-    start.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-    start.setHours(0, 0, 0, 0);
-    return d >= start;
-  }).length;
-
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
       <View style={s.header}>
         <View style={s.titleRow}>
           <Text style={s.titleIcon}>🏋️</Text>
           <View>
-            <Text style={s.title}>Workout Plans</Text>
-            <Text style={s.subtitle}>{workouts.length} sessions · {weekCount} this week</Text>
+            <Text style={s.title}>Workout Library</Text>
+            <Text style={s.subtitle}>
+              {tab === "yours"
+                ? "Tap a day to assign a workout"
+                : `${workouts.length} workouts · Explore your library`}
+            </Text>
           </View>
         </View>
         <TouchableOpacity style={s.newBtn} onPress={() => router.push("/(tabs)/new")}>
@@ -90,6 +90,10 @@ export default function WorkoutsList() {
         </TouchableOpacity>
       </View>
 
+      {tab === "yours" ? (
+        <CalendarPanel />
+      ) : (
+        <>
       <View style={s.searchRow}>
         <View style={s.searchWrap}>
           <Text style={s.searchIcon}>⌕</Text>
@@ -140,6 +144,8 @@ export default function WorkoutsList() {
           />
         )}
       />
+        </>
+      )}
     </SafeAreaView>
   );
 }

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Workout } from "@/lib/types";
-import { workoutTypeMeta, moodMeta } from "@/lib/constants";
-import { formatDate, formatDuration, formatSeconds, timeFromTimestamp, totalVolume, formatWeight, kgToUnit } from "@/lib/format";
+import { workoutTypeMeta } from "@/lib/constants";
+import { formatDate, formatDuration, formatSeconds, totalVolume, formatWeight, kgToUnit } from "@/lib/format";
 import { getMyUnit } from "@/lib/profile";
 import { getT } from "@/lib/i18n/server";
 import { DeleteWorkoutButton } from "@/components/DeleteWorkoutButton";
@@ -66,7 +66,6 @@ export default async function WorkoutDetailPage({ params }: { params: { id: stri
   const volume = totalVolume(exercises);
   const volumeDisplay = volume ? `${Math.round(kgToUnit(volume, unit)).toLocaleString()} ${unit}` : "—";
   const totalSets = exercises.reduce((s, e) => s + (e.exercise_sets?.length ?? 0), 0);
-  const mood = moodMeta(w.mood_after);
   const doneExercises = exercises.filter((e) => e.completed).length;
   const pct =
     exercises.length > 0
@@ -209,25 +208,6 @@ export default async function WorkoutDetailPage({ params }: { params: { id: stri
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl bg-white p-5 shadow-soft">
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#6B7280]">{t("detail.sessionDetails")}</h3>
-              <dl className="space-y-2 text-sm">
-                <Row label={t("detail.start")} value={timeFromTimestamp(w.start_time) || "—"} />
-                <Row label={t("detail.end")} value={timeFromTimestamp(w.end_time) || "—"} />
-                <Row label={t("form.difficulty")} value={w.difficulty ? t(`enum.difficulty.${w.difficulty}`) : "—"} />
-                <Row label={t("detail.energyBefore")} value={w.energy_before != null ? `${w.energy_before}/5` : "—"} />
-                <Row label={t("detail.moodAfter")} value={mood ? `${mood.emoji} ${t(`enum.mood.${mood.value}`)}` : "—"} />
-                <Row label={t("detail.bodyWeight")} value={formatWeight(w.body_weight, unit)} />
-                <Row label={t("detail.volume")} value={volumeDisplay} />
-              </dl>
-            </div>
-            <div className="rounded-2xl bg-white p-5 shadow-soft">
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[#6B7280]">{t("detail.notes")}</h3>
-              <p className="whitespace-pre-wrap text-sm text-[#374151]">{w.notes || t("detail.noNotes")}</p>
-            </div>
-          </div>
-
           <div className="mt-6">
             <PhotoManager workoutId={w.id} initial={photos} />
           </div>
@@ -243,15 +223,6 @@ function InsightStat({ icon, value, label }: { icon: React.ReactNode; value: str
       <span className="mb-2 text-brand-500">{icon}</span>
       <p className="text-lg font-extrabold text-brand-500 sm:text-xl">{value}</p>
       <p className="mt-0.5 text-[11px] font-medium text-[#6B7280]">{label}</p>
-    </div>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <dt className="text-[#6B7280]">{label}</dt>
-      <dd className="font-semibold text-[#12141A]">{value}</dd>
     </div>
   );
 }

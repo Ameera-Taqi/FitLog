@@ -44,11 +44,17 @@ export default async function DashboardPage() {
   const todayStr = now.toISOString().slice(0, 10);
 
   const totalWorkouts = workouts.length;
-  const completed = workouts.filter((w) => w.completed).length;
-  const thisWeek = workouts.filter((w) => new Date(w.workout_date + "T00:00:00") >= weekStart).length;
+  const completed = workouts.filter((w) => {
+    if (w.completed) return true;
+    const exs = w.exercises ?? [];
+    return exs.length > 0 && exs.every((e) => e.completed);
+  }).length;
+  const thisWeekWorkouts = workouts.filter((w) => new Date(w.workout_date + "T00:00:00") >= weekStart);
+  const calories = workouts.reduce((sum, w) => sum + (w.calories_burned ?? 0), 0);
+  const caloriesThisWeek = thisWeekWorkouts.reduce((sum, w) => sum + (w.calories_burned ?? 0), 0);
   const volume = workouts.reduce((sum, w) => sum + totalVolume(w.exercises), 0);
   const volumeStat = formatVolume(volume, unit);
-  const calories = workouts.reduce((sum, w) => sum + (w.calories_burned ?? 0), 0);
+  const prsAllTime = workouts.reduce((sum, w) => sum + (w.exercises?.filter((e) => e.is_pr).length ?? 0), 0);
   const prsThisMonth = workouts
     .filter((w) => new Date(w.workout_date + "T00:00:00") >= monthStart)
     .reduce((sum, w) => sum + (w.exercises?.filter((e) => e.is_pr).length ?? 0), 0);
@@ -105,28 +111,28 @@ export default async function DashboardPage() {
       {/* Highlight stats — uniform cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
-          label="Workouts Completed"
-          value={completed}
-          sub={`${t("dashboard.totalWorkouts")}: ${totalWorkouts}`}
+          label={t("dashboard.totalWorkouts")}
+          value={totalWorkouts}
+          sub={t("dashboard.completed", { n: completed })}
           icon={<IconDumbbell />}
         />
         <StatTile
           label="Calories Burnt"
           value={calories.toLocaleString()}
-          sub={`${t("dashboard.thisWeek")}: ${thisWeek}`}
+          sub={t("dashboard.thisWeekCalories", { n: caloriesThisWeek.toLocaleString() })}
           accent="accent"
           icon={<IconFlame />}
         />
         <StatTile
           label={t("dashboard.totalVolume")}
           value={volumeStat.value}
-          sub={t("dashboard.volumeSub", { unit })}
+          sub={volumeStat.sub}
           icon={<IconWeight />}
         />
         <StatTile
           label={t("dashboard.prsThisMonth")}
           value={prsThisMonth}
-          sub={t("dashboard.personalRecords")}
+          sub={t("dashboard.allTimePrs", { n: prsAllTime })}
           accent="accent"
           icon={<IconTrophy />}
         />
