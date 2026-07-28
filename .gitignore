@@ -24,3 +24,4 @@ mobile/expo-env.d.ts
 
 # Scratch / to-be-removed
 _to_delete/
+.env*
