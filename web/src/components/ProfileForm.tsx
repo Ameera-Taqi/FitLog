@@ -130,8 +130,8 @@ export function ProfileForm({ initial, email }: { initial: Profile | null; email
           <div>
             <label className="label">{t("profile.sex")}</label>
             <select value={sex} onChange={(e) => setSex(e.target.value as Sex | "")} className="input">
-              <option value="">{t("profile.preferNotToSay")}</option>
-              {SEX_OPTIONS.filter((s) => s.value !== "prefer_not_to_say").map((s) => (
+              <option value="">{t("enum.sex.prefer_not_to_say")}</option>
+              {SEX_OPTIONS.filter((s) => s.value !== "prefer_not_to_say" && s.value !== "other").map((s) => (
                 <option key={s.value} value={s.value}>{t(`enum.sex.${s.value}`)}</option>
               ))}
             </select>

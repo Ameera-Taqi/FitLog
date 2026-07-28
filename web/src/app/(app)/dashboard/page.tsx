@@ -5,7 +5,7 @@ import { WeeklyBars, type WeekBar } from "@/components/WeeklyBars";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import type { Workout } from "@/lib/types";
 import { totalVolume, formatVolume, formatDuration } from "@/lib/format";
-import { getMyUnit } from "@/lib/profile";
+import { getMyUnit, getMyProfile } from "@/lib/profile";
 import { getT } from "@/lib/i18n/server";
 import { workoutTypeMeta } from "@/lib/constants";
 import { fetchWorkoutPhotoHeroMap } from "@/lib/workout-hero";
@@ -36,7 +36,8 @@ export default async function DashboardPage() {
   const { t } = await getT();
   const photoHeroMap = await fetchWorkoutPhotoHeroMap(supabase, workouts);
   const email = userData.user?.email ?? "";
-  const displayName = email.split("@")[0] || "Athlete";
+  const profile = await getMyProfile();
+  const displayName = profile?.display_name?.trim() || email.split("@")[0] || "Athlete";
 
   const now = new Date();
   const weekStart = startOfWeek(now);
