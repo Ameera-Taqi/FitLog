@@ -1,13 +1,13 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, RefreshControl, ScrollView, Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { theme } from "@/lib/theme";
 import {
-  Workout, WORKOUT_TYPES, typeMeta, formatDate, formatDuration, WorkoutType,
+  Workout, WORKOUT_TYPES, typeMeta, formatDuration, WorkoutType,
 } from "@/lib/types";
 import { fetchWorkoutPhotoHeroMap } from "@/lib/hero";
 import { CalendarPanel } from "@/components/CalendarPanel";
@@ -16,13 +16,18 @@ const fallbackHero = require("../../assets/workout-hero.png");
 
 export default function WorkoutsList() {
   const router = useRouter();
+  const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [photoHeroMap, setPhotoHeroMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"explore" | "yours">("explore");
+  const [tab, setTab] = useState<"explore" | "yours">(tabParam === "yours" ? "yours" : "explore");
   const [type, setType] = useState<WorkoutType | "">("");
   const [status, setStatus] = useState<"" | "completed" | "incomplete">("");
+
+  useEffect(() => {
+    if (tabParam === "yours") setTab("yours");
+  }, [tabParam]);
 
   const load = useCallback(async () => {
     if (tab === "yours") {
@@ -170,6 +175,8 @@ function WorkoutTile({
   const meta = typeMeta(workout.workout_type);
   const hasPR = workout.exercises?.some((e) => e.is_pr);
   const hasUserPhoto = Boolean(heroUri);
+  const exCount = workout.exercises?.length ?? 0;
+  const setCount = (workout.exercises ?? []).reduce((n, e) => n + (e.exercise_sets?.length ?? 0), 0);
   return (
     <TouchableOpacity style={s.tile} onPress={onPress} activeOpacity={0.85}>
       <View style={s.tileHero}>
@@ -187,13 +194,23 @@ function WorkoutTile({
         </View>
       </View>
       <Text style={s.tileTitle} numberOfLines={1}>{workout.name}</Text>
-      <Text style={s.tileMeta} numberOfLines={1}>
-        {formatDate(workout.workout_date)}{hasPR ? " · ★ PR" : ""}
-      </Text>
-      <Text style={s.tileSub} numberOfLines={1}>
-        {workout.completed ? "Completed" : "In progress"}
-        {(workout.muscle_groups ?? [])[0] ? ` · ${(workout.muscle_groups ?? [])[0]}` : ""}
-      </Text>
+      <View style={s.tileStatusRow}>
+        <Text style={[s.tileStatus, workout.completed ? s.tileStatusDone : s.tileStatusProgress]}>
+          {workout.completed ? "Completed" : "In progress"}
+        </Text>
+        {hasPR ? <Text style={s.tilePr}>★ PR</Text> : null}
+      </View>
+      {(workout.exercises?.length ?? 0) > 0 && (
+        <Text style={s.tileMeta} numberOfLines={1}>
+          {exCount} {exCount === 1 ? "exercise" : "exercises"} · {setCount} sets
+          {workout.difficulty ? ` · ${workout.difficulty}` : ""}
+        </Text>
+      )}
+      {(workout.muscle_groups ?? []).length > 0 && (
+        <Text style={s.tileSub} numberOfLines={1}>
+          {(workout.muscle_groups ?? []).slice(0, 3).join(" · ")}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -265,7 +282,12 @@ const s = StyleSheet.create({
   },
   tileBadge: { color: theme.colors.white, fontSize: 11, fontWeight: "700" },
   tileTitle: { marginTop: 8, fontSize: 14, fontWeight: "700", color: theme.colors.ink900 },
-  tileMeta: { marginTop: 2, fontSize: 11, color: theme.colors.ink500 },
+  tileStatusRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, flexWrap: "wrap" },
+  tileStatus: { fontSize: 10, fontWeight: "700", textTransform: "uppercase" },
+  tileStatusDone: { color: theme.colors.brand },
+  tileStatusProgress: { color: theme.colors.ink400 },
+  tilePr: { fontSize: 10, fontWeight: "800", color: theme.colors.amber },
+  tileMeta: { marginTop: 4, fontSize: 11, color: theme.colors.ink500 },
   tileSub: { marginTop: 2, fontSize: 11, color: theme.colors.ink400 },
   empty: { alignItems: "center", paddingTop: 80, width: "100%" },
   emptyIcon: { fontSize: 48, marginBottom: 12 },

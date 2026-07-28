@@ -112,3 +112,20 @@ export function totalVolume(exercises?: Exercise[]): number {
   for (const ex of exercises) for (const s of ex.exercise_sets ?? []) if (s.reps && s.weight) v += s.reps * s.weight;
   return Math.round(v);
 }
+
+export function isWorkoutCompleted(w: Workout): boolean {
+  if (w.completed) return true;
+  const exs = w.exercises ?? [];
+  return exs.length > 0 && exs.every((e) => e.completed);
+}
+
+/** Match web formatVolume for kg (mobile has no unit pref yet). */
+export function formatVolumeKg(kgVolume: number): { value: string; sub: string } {
+  const value =
+    kgVolume >= 100000
+      ? `${(kgVolume / 1000).toFixed(0)}k`
+      : kgVolume >= 1000
+        ? `${(kgVolume / 1000).toFixed(1)}t`
+        : `${Math.round(kgVolume)}`;
+  return { value, sub: "kg lifted (all time)" };
+}

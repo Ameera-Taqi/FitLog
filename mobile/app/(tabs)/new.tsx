@@ -20,6 +20,7 @@ export default function NewWorkout() {
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [duration, setDuration] = useState("");
+  const [calories, setCalories] = useState("");
   const [type, setType] = useState<WorkoutType>("strength");
   const [muscles, setMuscles] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState<Difficulty | "">("");
@@ -52,13 +53,14 @@ export default function NewWorkout() {
       const workoutCompleted = clean.length > 0 && clean.every((ex) => ex.completed);
 
       const workoutDate = new Date().toISOString().slice(0, 10);
-      // Library workout only — schedule days from the Calendar tab.
+      // Library workout only — schedule days from Your Plans.
       const { data: w, error: wErr } = await supabase.from("workouts").insert({
         user_id: uid,
         name: name.trim(),
         workout_date: workoutDate,
         location: location.trim() || null,
         duration_minutes: num(duration),
+        calories_burned: num(calories),
         workout_type: type,
         muscle_groups: muscles,
         difficulty: difficulty || null,
@@ -87,7 +89,7 @@ export default function NewWorkout() {
       }
 
       // reset & navigate
-      setName(""); setLocation(""); setDuration(""); setMuscles([]); setDifficulty(""); setNotes(""); setExercises([emptyEx()]);
+      setName(""); setLocation(""); setDuration(""); setCalories(""); setMuscles([]); setDifficulty(""); setNotes(""); setExercises([emptyEx()]);
       router.push(`/workout/${w.id}`);
     } catch (err: any) {
       Alert.alert("Couldn't save", err?.message ?? "Something went wrong.");
@@ -109,6 +111,9 @@ export default function NewWorkout() {
           </Field>
           <Field label="Duration (min)">
             <TextInput style={s.input} value={duration} onChangeText={setDuration} keyboardType="numeric" placeholder="60" placeholderTextColor={theme.colors.ink400} />
+          </Field>
+          <Field label="Calories burned">
+            <TextInput style={s.input} value={calories} onChangeText={setCalories} keyboardType="numeric" placeholder="450" placeholderTextColor={theme.colors.ink400} />
           </Field>
           <Field label="Location">
             <TextInput style={s.input} value={location} onChangeText={setLocation} placeholder="e.g. Home gym" placeholderTextColor={theme.colors.ink400} />
@@ -134,10 +139,7 @@ export default function NewWorkout() {
         </View>
 
         {/* Exercises */}
-        <View style={s.exHeader}>
-          <Text style={s.exTitle}>Exercises</Text>
-          <TouchableOpacity onPress={() => setExercises((c) => [...c, emptyEx()])}><Text style={s.link}>+ Add exercise</Text></TouchableOpacity>
-        </View>
+        <Text style={[s.exTitle, { marginBottom: 8, marginTop: 4 }]}>Exercises</Text>
 
         {exercises.map((ex, ei) => (
           <View key={ei} style={s.card}>
@@ -172,6 +174,12 @@ export default function NewWorkout() {
             <TouchableOpacity onPress={() => setEx(ei, { sets: [...ex.sets, emptySet()] })}><Text style={s.link}>+ Add set</Text></TouchableOpacity>
           </View>
         ))}
+
+        <View style={s.addExRow}>
+          <TouchableOpacity onPress={() => setExercises((c) => [...c, emptyEx()])} style={s.addExBtn}>
+            <Text style={s.addExText}>+ Add exercise</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* How it went */}
         <View style={s.card}>
@@ -226,6 +234,12 @@ const s = StyleSheet.create({
   pillTextActive: { color: theme.colors.white },
   exHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8, marginTop: 4 },
   exTitle: { fontSize: 18, fontWeight: "800", color: theme.colors.ink900 },
+  addExRow: { alignItems: "flex-end", marginBottom: 12 },
+  addExBtn: {
+    backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.ink200,
+    borderRadius: theme.radius.full, paddingHorizontal: 14, paddingVertical: 10,
+  },
+  addExText: { color: theme.colors.ink800, fontWeight: "700", fontSize: 14 },
   link: { color: theme.colors.brand, fontWeight: "700", fontSize: 14, marginTop: 4 },
   exTop: { flexDirection: "row", alignItems: "center", gap: 8 },
   prBtn: { paddingHorizontal: 10, paddingVertical: 10, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.ink200 },

@@ -7,7 +7,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import Svg, { Path, Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 import { supabase } from "@/lib/supabase";
 import { theme } from "@/lib/theme";
-import { Workout, typeMeta, formatDuration, totalVolume } from "@/lib/types";
+import { Workout, typeMeta, formatDuration, totalVolume, isWorkoutCompleted, formatVolumeKg } from "@/lib/types";
 
 function startOfWeek(d: Date): Date {
   const x = new Date(d);
@@ -39,11 +39,19 @@ export default function HomeDashboard() {
   const name = (email || "Athlete").split("@")[0];
   const todayStr = new Date().toISOString().slice(0, 10);
   const weekStart = startOfWeek(new Date());
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-  const completed = workouts.filter((w) => w.completed).length;
+  const totalWorkouts = workouts.length;
+  const completed = workouts.filter(isWorkoutCompleted).length;
+  const thisWeekWorkouts = workouts.filter((w) => new Date(w.workout_date + "T00:00:00") >= weekStart);
   const calories = workouts.reduce((s, w) => s + (w.calories_burned ?? 0), 0);
+  const caloriesThisWeek = thisWeekWorkouts.reduce((s, w) => s + (w.calories_burned ?? 0), 0);
   const volume = workouts.reduce((s, w) => s + totalVolume(w.exercises), 0);
-  const thisWeek = workouts.filter((w) => new Date(w.workout_date + "T00:00:00") >= weekStart).length;
+  const volumeStat = formatVolumeKg(volume);
+  const prsAllTime = workouts.reduce((s, w) => s + (w.exercises?.filter((e) => e.is_pr).length ?? 0), 0);
+  const prsThisMonth = workouts
+    .filter((w) => new Date(w.workout_date + "T00:00:00") >= monthStart)
+    .reduce((s, w) => s + (w.exercises?.filter((e) => e.is_pr).length ?? 0), 0);
   const todayWorkouts = workouts.filter((w) => w.workout_date === todayStr);
   const recent = workouts.slice(0, 5);
   const sheetList = todayWorkouts.length > 0 ? todayWorkouts : recent;
@@ -86,23 +94,31 @@ export default function HomeDashboard() {
           </TouchableOpacity>
         </View>
 
-        <View style={s.highlightRow}>
-          <View style={s.highlightCard}>
-            <Text style={s.highlightIcon}>🏋️</Text>
-            <Text style={s.highlightValue}>{completed}</Text>
-            <Text style={s.highlightLabel}>Workouts Completed</Text>
-          </View>
-          <View style={s.highlightCard}>
-            <Text style={s.highlightIcon}>🔥</Text>
-            <Text style={s.highlightValue}>{calories.toLocaleString()}</Text>
-            <Text style={s.highlightLabel}>Calories Burnt</Text>
-          </View>
-        </View>
-
-        <View style={s.statRow}>
-          <MiniStat label="This week" value={String(thisWeek)} />
-          <MiniStat label="Volume (kg)" value={volume.toLocaleString()} />
-          <MiniStat label="Total" value={String(workouts.length)} />
+        <View style={s.statGrid}>
+          <StatTile
+            label="Total workouts"
+            value={String(totalWorkouts)}
+            sub={`${completed} completed`}
+            icon="🏋️"
+          />
+          <StatTile
+            label="Calories Burnt"
+            value={calories.toLocaleString()}
+            sub={`This week: ${caloriesThisWeek.toLocaleString()}`}
+            icon="🔥"
+          />
+          <StatTile
+            label="Total volume"
+            value={volumeStat.value}
+            sub={volumeStat.sub}
+            icon="💪"
+          />
+          <StatTile
+            label="PRs this month"
+            value={String(prsThisMonth)}
+            sub={`${prsAllTime} all time`}
+            icon="🏆"
+          />
         </View>
 
         <View style={s.chartCard}>
@@ -145,11 +161,25 @@ export default function HomeDashboard() {
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
+function StatTile({
+  label,
+  value,
+  sub,
+  icon,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  icon: string;
+}) {
   return (
-    <View style={s.miniStat}>
-      <Text style={s.miniValue}>{value}</Text>
-      <Text style={s.miniLabel}>{label}</Text>
+    <View style={s.statTile}>
+      <Text style={s.statTileIcon}>{icon}</Text>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={s.statTileValue} numberOfLines={1}>{value}</Text>
+        <Text style={s.statTileLabel} numberOfLines={1}>{label}</Text>
+        {sub ? <Text style={s.statTileSub} numberOfLines={1}>{sub}</Text> : null}
+      </View>
     </View>
   );
 }
@@ -204,15 +234,15 @@ const s = StyleSheet.create({
   name: { fontSize: 20, fontWeight: "800", color: theme.colors.ink900, textTransform: "capitalize" },
   newBtn: { backgroundColor: theme.colors.brand, paddingHorizontal: 16, paddingVertical: 10, borderRadius: theme.radius.full },
   newBtnText: { color: theme.colors.white, fontWeight: "700" },
-  highlightRow: { flexDirection: "row", gap: 12, paddingHorizontal: 16 },
-  highlightCard: { flex: 1, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: 16, ...theme.shadow },
-  highlightIcon: { fontSize: 22, marginBottom: 8 },
-  highlightValue: { fontSize: 26, fontWeight: "800", color: theme.colors.ink900 },
-  highlightLabel: { marginTop: 4, fontSize: 12, color: theme.colors.ink500, fontWeight: "600" },
-  statRow: { flexDirection: "row", gap: 10, paddingHorizontal: 16, marginTop: 12 },
-  miniStat: { flex: 1, backgroundColor: theme.colors.surface, borderRadius: theme.radius.md, padding: 12 },
-  miniValue: { fontSize: 18, fontWeight: "800", color: theme.colors.brand },
-  miniLabel: { marginTop: 2, fontSize: 10, fontWeight: "700", color: theme.colors.ink500, textTransform: "uppercase" },
+  statGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, paddingHorizontal: 16 },
+  statTile: {
+    width: "48%", flexGrow: 1, flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: 14, ...theme.shadow,
+  },
+  statTileIcon: { fontSize: 22 },
+  statTileValue: { fontSize: 22, fontWeight: "800", color: theme.colors.ink900 },
+  statTileLabel: { marginTop: 2, fontSize: 11, color: theme.colors.ink500, fontWeight: "600" },
+  statTileSub: { marginTop: 2, fontSize: 10, color: theme.colors.ink400 },
   chartCard: { marginTop: 16, marginHorizontal: 16, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: 16, ...theme.shadow },
   chartHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   chartTitle: { fontSize: 16, fontWeight: "800", color: theme.colors.ink900 },

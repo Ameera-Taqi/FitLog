@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { theme } from "@/lib/theme";
-import { Workout, totalVolume } from "@/lib/types";
+import { Workout, totalVolume, isWorkoutCompleted } from "@/lib/types";
 
 export default function Profile() {
   const [email, setEmail] = useState("");
@@ -17,7 +17,7 @@ export default function Profile() {
     const ws = (data ?? []) as Workout[];
     setStats({
       total: ws.length,
-      completed: ws.filter((w) => w.completed).length,
+      completed: ws.filter(isWorkoutCompleted).length,
       volume: ws.reduce((s, w) => s + totalVolume(w.exercises), 0),
       prs: ws.reduce((s, w) => s + (w.exercises?.filter((e) => e.is_pr).length ?? 0), 0),
       calories: ws.reduce((s, w) => s + (w.calories_burned ?? 0), 0),

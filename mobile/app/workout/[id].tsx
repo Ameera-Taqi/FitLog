@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 import { supabase } from "@/lib/supabase";
 import { theme } from "@/lib/theme";
-import { Workout, typeMeta, difficultyLabel, formatDate, formatDuration, totalVolume } from "@/lib/types";
+import { Workout, typeMeta, formatDate, formatDuration, totalVolume } from "@/lib/types";
 
 export default function WorkoutDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -161,13 +161,6 @@ export default function WorkoutDetail() {
             );
           })}
 
-          <View style={s.whiteCard}>
-            <Text style={s.detailTitle}>Session details</Text>
-            <Detail label="Difficulty" value={difficultyLabel(w.difficulty)} />
-            <Detail label="Energy before" value={w.energy_before != null ? `${w.energy_before}/5` : "—"} />
-            <Detail label="Body weight" value={w.body_weight != null ? `${w.body_weight} kg` : "—"} />
-            <Detail label="Notes" value={w.notes || "—"} />
-          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -221,15 +214,6 @@ function Insight({ icon, value, label }: { icon: string; value: string; label: s
       <Text style={{ fontSize: 20 }}>{icon}</Text>
       <Text style={s.insightValue}>{value}</Text>
       <Text style={s.insightLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={s.detailRow}>
-      <Text style={s.detailLabel}>{label}</Text>
-      <Text style={s.detailValue}>{value}</Text>
     </View>
   );
 }
@@ -291,8 +275,4 @@ const s = StyleSheet.create({
   setCell: { fontSize: 14, color: theme.colors.onSheet },
   prTag: { marginTop: 8, color: theme.colors.amber, fontWeight: "700", fontSize: 12 },
   exNotes: { marginTop: 8, color: theme.colors.onSheetMuted, fontSize: 13 },
-  detailTitle: { fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.6, color: theme.colors.onSheetMuted, marginBottom: 8 },
-  detailRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: "#F0F0F0" },
-  detailLabel: { color: theme.colors.onSheetMuted, fontSize: 14 },
-  detailValue: { color: theme.colors.onSheet, fontWeight: "600", fontSize: 14, flexShrink: 1, textAlign: "right", marginLeft: 12 },
 });
