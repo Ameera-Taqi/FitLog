@@ -1,8 +1,10 @@
 import { Tabs } from "expo-router";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import type { ReactElement } from "react";
 import { theme } from "@/lib/theme";
+import { DumbbellIcon, HomeIcon, PlusIcon, UserIcon, type IconProps } from "@/components/icons";
 
-function Icon({ emoji, focused }: { emoji: string; focused: boolean }) {
+function TabIcon({ Glyph, focused }: { Glyph: (p: IconProps) => ReactElement; focused: boolean }) {
   return (
     <View
       style={{
@@ -14,7 +16,7 @@ function Icon({ emoji, focused }: { emoji: string; focused: boolean }) {
         backgroundColor: focused ? "rgba(255,107,78,0.18)" : "transparent",
       }}
     >
-      <Text style={{ fontSize: 18, opacity: focused ? 1 : 0.45 }}>{emoji}</Text>
+      <Glyph size={20} color={focused ? theme.colors.brand : theme.colors.ink400} strokeWidth={2} />
     </View>
   );
 }
@@ -37,11 +39,11 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: "Dashboard", tabBarIcon: ({ focused }) => <Icon emoji="🏠" focused={focused} /> }}
+        options={{ title: "Dashboard", tabBarIcon: ({ focused }) => <TabIcon Glyph={HomeIcon} focused={focused} /> }}
       />
       <Tabs.Screen
         name="workouts"
-        options={{ title: "Workouts", tabBarIcon: ({ focused }) => <Icon emoji="🏋️" focused={focused} /> }}
+        options={{ title: "Workouts", tabBarIcon: ({ focused }) => <TabIcon Glyph={DumbbellIcon} focused={focused} /> }}
       />
       <Tabs.Screen
         name="calendar"
@@ -49,11 +51,11 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="new"
-        options={{ title: "Log", tabBarIcon: ({ focused }) => <Icon emoji="＋" focused={focused} /> }}
+        options={{ title: "Log", tabBarIcon: ({ focused }) => <TabIcon Glyph={PlusIcon} focused={focused} /> }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: "Profile", tabBarIcon: ({ focused }) => <Icon emoji="👤" focused={focused} /> }}
+        options={{ title: "Profile", tabBarIcon: ({ focused }) => <TabIcon Glyph={UserIcon} focused={focused} /> }}
       />
     </Tabs>
   );

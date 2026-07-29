@@ -6,13 +6,25 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { theme } from "@/lib/theme";
-import { WORKOUT_TYPES, DIFFICULTIES, MUSCLE_GROUPS, WorkoutType, Difficulty } from "@/lib/types";
+import { WORKOUT_TYPES, MUSCLE_GROUPS, WorkoutType } from "@/lib/types";
 
-interface SetRow { reps: string; weight: string; rest: string }
-interface ExRow { name: string; is_pr: boolean; completed: boolean; sets: SetRow[] }
+type ExDifficulty = "" | "easy" | "moderate" | "hard";
+interface ExRow {
+  name: string; is_pr: boolean; completed: boolean; difficulty: ExDifficulty;
+  setsCount: string; reps: string; weight: string; rest: string; notes: string;
+}
 
-const emptySet = (): SetRow => ({ reps: "", weight: "", rest: "" });
-const emptyEx = (): ExRow => ({ name: "", is_pr: false, completed: false, sets: [emptySet()] });
+// Per-exercise difficulty — three levels.
+const EX_DIFFICULTIES: { value: Exclude<ExDifficulty, "">; label: string }[] = [
+  { value: "easy", label: "Easy" },
+  { value: "moderate", label: "Moderate" },
+  { value: "hard", label: "Hard" },
+];
+
+const emptyEx = (): ExRow => ({
+  name: "", is_pr: false, completed: false, difficulty: "",
+  setsCount: "", reps: "", weight: "", rest: "", notes: "",
+});
 const num = (v: string) => (v === "" ? null : Number.isFinite(Number(v)) ? Number(v) : null);
 
 export default function NewWorkout() {
@@ -23,8 +35,6 @@ export default function NewWorkout() {
   const [calories, setCalories] = useState("");
   const [type, setType] = useState<WorkoutType>("strength");
   const [muscles, setMuscles] = useState<string[]>([]);
-  const [difficulty, setDifficulty] = useState<Difficulty | "">("");
-  const [notes, setNotes] = useState("");
   const [exercises, setExercises] = useState<ExRow[]>([emptyEx()]);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -34,9 +44,6 @@ export default function NewWorkout() {
   }
   function setEx(i: number, patch: Partial<ExRow>) {
     setExercises((c) => c.map((e, idx) => (idx === i ? { ...e, ...patch } : e)));
-  }
-  function setSet(ei: number, si: number, patch: Partial<SetRow>) {
-    setExercises((c) => c.map((e, idx) => idx === ei ? { ...e, sets: e.sets.map((st, sidx) => sidx === si ? { ...st, ...patch } : st) } : e));
   }
 
   async function save() {
@@ -63,8 +70,6 @@ export default function NewWorkout() {
         calories_burned: num(calories),
         workout_type: type,
         muscle_groups: muscles,
-        difficulty: difficulty || null,
-        notes: notes.trim() || null,
         completed: workoutCompleted,
       }).select("id").single();
       if (wErr) throw wErr;
@@ -77,10 +82,17 @@ export default function NewWorkout() {
           position: i,
           is_pr: ex.is_pr,
           completed: ex.completed,
+          difficulty: ex.difficulty || null,
+          notes: ex.notes.trim() || null,
         }).select("id").single();
         if (exErr) throw exErr;
-        const sets = ex.sets.filter((st) => st.reps || st.weight).map((st, si) => ({
-          exercise_id: exRow.id, set_number: si + 1, reps: num(st.reps), weight: num(st.weight), rest_seconds: num(st.rest),
+        // Expand the "number of sets" into that many identical set rows.
+        const wanted = Math.floor(Number(ex.setsCount) || 0);
+        const hasData = Boolean(ex.reps || ex.weight || ex.rest);
+        const count = wanted > 0 ? wanted : hasData ? 1 : 0;
+        const reps = num(ex.reps), weight = num(ex.weight), rest = num(ex.rest);
+        const sets = Array.from({ length: count }, (_, si) => ({
+          exercise_id: exRow.id, set_number: si + 1, reps, weight, rest_seconds: rest,
         }));
         if (sets.length) {
           const { error: sErr } = await supabase.from("exercise_sets").insert(sets);
@@ -89,7 +101,7 @@ export default function NewWorkout() {
       }
 
       // reset & navigate
-      setName(""); setLocation(""); setDuration(""); setCalories(""); setMuscles([]); setDifficulty(""); setNotes(""); setExercises([emptyEx()]);
+      setName(""); setLocation(""); setDuration(""); setCalories(""); setMuscles([]); setExercises([emptyEx()]);
       router.push(`/workout/${w.id}`);
     } catch (err: any) {
       Alert.alert("Couldn't save", err?.message ?? "Something went wrong.");
@@ -142,36 +154,48 @@ export default function NewWorkout() {
         <Text style={[s.exTitle, { marginBottom: 8, marginTop: 4 }]}>Exercises</Text>
 
         {exercises.map((ex, ei) => (
-          <View key={ei} style={s.card}>
+          <View key={ei} style={[s.card, ex.completed && s.cardDone]}>
             <View style={s.exTop}>
+              <View style={[s.exNum, ex.completed && s.exNumOn]}>
+                <Text style={ex.completed ? s.exNumCheck : s.exNumText}>{ex.completed ? "✓" : ei + 1}</Text>
+              </View>
               <TextInput style={[s.input, { flex: 1 }]} value={ex.name} onChangeText={(v) => setEx(ei, { name: v })} placeholder={`Exercise ${ei + 1}`} placeholderTextColor={theme.colors.ink400} />
-              <TouchableOpacity onPress={() => setEx(ei, { is_pr: !ex.is_pr })} style={[s.prBtn, ex.is_pr && s.prBtnActive]}>
-                <Text style={[s.prText, ex.is_pr && { color: theme.colors.amber }]}>★ PR</Text>
-              </TouchableOpacity>
               {exercises.length > 1 && (
                 <TouchableOpacity onPress={() => setExercises((c) => c.filter((_, idx) => idx !== ei))} style={s.delBtn}><Text style={s.delText}>✕</Text></TouchableOpacity>
               )}
             </View>
 
-            <View style={s.setHeaderRow}>
-              <Text style={[s.setHead, { width: 24 }]}>#</Text>
-              <Text style={[s.setHead, { flex: 1 }]}>Reps</Text>
-              <Text style={[s.setHead, { flex: 1 }]}>Weight</Text>
-              <Text style={[s.setHead, { flex: 1 }]}>Rest (s)</Text>
-              <View style={{ width: 28 }} />
+            <View style={s.metricsPanel}>
+              <View style={s.metricCol}><Text style={s.metricHead}>Sets</Text><TextInput style={s.setInput} value={ex.setsCount} onChangeText={(v) => setEx(ei, { setsCount: v })} keyboardType="numeric" placeholder="3" placeholderTextColor={theme.colors.ink400} /></View>
+              <View style={s.metricCol}><Text style={s.metricHead}>Reps</Text><TextInput style={s.setInput} value={ex.reps} onChangeText={(v) => setEx(ei, { reps: v })} keyboardType="numeric" placeholder="10" placeholderTextColor={theme.colors.ink400} /></View>
+              <View style={s.metricCol}><Text style={s.metricHead}>Weight</Text><TextInput style={s.setInput} value={ex.weight} onChangeText={(v) => setEx(ei, { weight: v })} keyboardType="numeric" placeholder="60" placeholderTextColor={theme.colors.ink400} /></View>
+              <View style={s.metricCol}><Text style={s.metricHead}>Rest (s)</Text><TextInput style={s.setInput} value={ex.rest} onChangeText={(v) => setEx(ei, { rest: v })} keyboardType="numeric" placeholder="90" placeholderTextColor={theme.colors.ink400} /></View>
             </View>
-            {ex.sets.map((st, si) => (
-              <View key={si} style={s.setRow}>
-                <Text style={[s.setNum, { width: 24 }]}>{si + 1}</Text>
-                <TextInput style={[s.setInput, { flex: 1 }]} value={st.reps} onChangeText={(v) => setSet(ei, si, { reps: v })} keyboardType="numeric" placeholder="—" placeholderTextColor={theme.colors.ink300} />
-                <TextInput style={[s.setInput, { flex: 1 }]} value={st.weight} onChangeText={(v) => setSet(ei, si, { weight: v })} keyboardType="numeric" placeholder="—" placeholderTextColor={theme.colors.ink300} />
-                <TextInput style={[s.setInput, { flex: 1 }]} value={st.rest} onChangeText={(v) => setSet(ei, si, { rest: v })} keyboardType="numeric" placeholder="—" placeholderTextColor={theme.colors.ink300} />
-                <TouchableOpacity style={{ width: 28, alignItems: "center" }} onPress={() => ex.sets.length > 1 && setEx(ei, { sets: ex.sets.filter((_, idx) => idx !== si) })}>
-                  {ex.sets.length > 1 && <Text style={s.delText}>✕</Text>}
+
+            <TextInput style={[s.input, { marginTop: 10 }]} value={ex.notes} onChangeText={(v) => setEx(ei, { notes: v })} placeholder="Exercise notes (optional)" placeholderTextColor={theme.colors.ink400} />
+
+            <View style={s.metaFooter}>
+              <Text style={s.label}>Difficulty</Text>
+              <View style={s.wrap}>
+                {EX_DIFFICULTIES.map((d) => (
+                  <TouchableOpacity
+                    key={d.value}
+                    onPress={() => setEx(ei, { difficulty: ex.difficulty === d.value ? "" : d.value })}
+                    style={[s.pill, ex.difficulty === d.value && s.pillDark]}
+                  >
+                    <Text style={[s.pillText, ex.difficulty === d.value && s.pillTextActive]}>{d.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={s.toggleRow}>
+                <TouchableOpacity onPress={() => setEx(ei, { is_pr: !ex.is_pr })} style={[s.togglePill, ex.is_pr && s.prOn]}>
+                  <Text style={[s.togglePillText, ex.is_pr && s.togglePillTextOn]}>★ PR</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setEx(ei, { completed: !ex.completed })} style={[s.togglePill, ex.completed && s.doneOn]}>
+                  <Text style={[s.togglePillText, ex.completed && s.togglePillTextOn]}>✓ Completed</Text>
                 </TouchableOpacity>
               </View>
-            ))}
-            <TouchableOpacity onPress={() => setEx(ei, { sets: [...ex.sets, emptySet()] })}><Text style={s.link}>+ Add set</Text></TouchableOpacity>
+            </View>
           </View>
         ))}
 
@@ -179,22 +203,6 @@ export default function NewWorkout() {
           <TouchableOpacity onPress={() => setExercises((c) => [...c, emptyEx()])} style={s.addExBtn}>
             <Text style={s.addExText}>+ Add exercise</Text>
           </TouchableOpacity>
-        </View>
-
-        {/* How it went */}
-        <View style={s.card}>
-          <Text style={s.section}>How it went</Text>
-          <Text style={s.label}>Difficulty</Text>
-          <View style={s.wrap}>
-            {DIFFICULTIES.map((d) => (
-              <TouchableOpacity key={d.value} onPress={() => setDifficulty(difficulty === d.value ? "" : d.value)} style={[s.pill, difficulty === d.value && s.pillDark]}>
-                <Text style={[s.pillText, difficulty === d.value && s.pillTextActive]}>{d.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <Field label="Notes">
-            <TextInput style={[s.input, { height: 84, textAlignVertical: "top" }]} value={notes} onChangeText={setNotes} multiline placeholder="How did it feel?" placeholderTextColor={theme.colors.ink400} />
-          </Field>
         </View>
       </ScrollView>
 
@@ -241,6 +249,22 @@ const s = StyleSheet.create({
   },
   addExText: { color: theme.colors.ink800, fontWeight: "700", fontSize: 14 },
   link: { color: theme.colors.brand, fontWeight: "700", fontSize: 14, marginTop: 4 },
+  exDiffRow: { marginTop: 12, borderTopWidth: 1, borderTopColor: theme.colors.ink200, paddingTop: 6 },
+  cardDone: { borderWidth: 1.5, borderColor: theme.colors.brand },
+  exNum: { width: 28, height: 28, borderRadius: 8, backgroundColor: theme.colors.brandSoft, alignItems: "center", justifyContent: "center" },
+  exNumOn: { backgroundColor: theme.colors.brand },
+  exNumText: { color: theme.colors.brand, fontWeight: "800", fontSize: 13 },
+  exNumCheck: { color: theme.colors.white, fontWeight: "800", fontSize: 14 },
+  metricsPanel: { flexDirection: "row", gap: 8, backgroundColor: theme.colors.bg, borderRadius: theme.radius.md, padding: 10, marginTop: 12 },
+  metricCol: { flex: 1 },
+  metricHead: { fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4, color: theme.colors.ink500, marginBottom: 4 },
+  metaFooter: { marginTop: 14, borderTopWidth: 1, borderTopColor: theme.colors.ink200, paddingTop: 4 },
+  toggleRow: { flexDirection: "row", gap: 8, marginTop: 12 },
+  togglePill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: theme.radius.full, borderWidth: 1, borderColor: theme.colors.ink200, backgroundColor: theme.colors.surface2 },
+  togglePillText: { fontWeight: "700", fontSize: 13, color: theme.colors.ink600 },
+  togglePillTextOn: { color: theme.colors.white },
+  prOn: { backgroundColor: theme.colors.amber, borderColor: theme.colors.amber },
+  doneOn: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
   exTop: { flexDirection: "row", alignItems: "center", gap: 8 },
   prBtn: { paddingHorizontal: 10, paddingVertical: 10, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.ink200 },
   prBtnActive: { borderColor: theme.colors.amber, backgroundColor: theme.colors.amberSoft },

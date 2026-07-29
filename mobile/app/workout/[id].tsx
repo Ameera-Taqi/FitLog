@@ -6,10 +6,15 @@ import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 import { supabase } from "@/lib/supabase";
 import { theme } from "@/lib/theme";
 import { Workout, typeMeta, formatDate, formatDuration, totalVolume } from "@/lib/types";
+import { FlameIcon, ClockIcon, TimerIcon, DumbbellIcon, ChartIcon } from "@/components/icons";
+import type { ReactNode } from "react";
 
 export default function WorkoutDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  // Go back if there's history, otherwise fall back to the workouts list
+  // (e.g. when the screen was opened via a deep link / direct URL).
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)/workouts"));
   const [w, setW] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,7 +32,7 @@ export default function WorkoutDetail() {
       { text: "Cancel", style: "cancel" },
       { text: "Delete", style: "destructive", onPress: async () => {
         await supabase.from("workouts").delete().eq("id", id);
-        router.back();
+        goBack();
       } },
     ]);
   }
@@ -80,7 +85,7 @@ export default function WorkoutDetail() {
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
       <View style={s.topBar}>
-        <TouchableOpacity onPress={() => router.back()}><Text style={s.back}>‹ Back</Text></TouchableOpacity>
+        <TouchableOpacity onPress={goBack}><Text style={s.back}>‹ Back</Text></TouchableOpacity>
         <Text style={s.topTitle}>Workout Insights</Text>
         <TouchableOpacity onPress={confirmDelete}><Text style={s.delete}>Delete</Text></TouchableOpacity>
       </View>
@@ -93,10 +98,10 @@ export default function WorkoutDetail() {
 
         <View style={s.sheet}>
           <View style={s.insightGrid}>
-            <Insight icon="🔥" value={w.calories_burned != null ? `${w.calories_burned} Cal` : "—"} label="Calories Burnt" />
-            <Insight icon="⏱" value={formatDuration(w.duration_minutes) || "—"} label="Time Taken" />
-            <Insight icon="⏳" value={avgRest != null ? `${avgRest}s` : "—"} label="Average Rest" />
-            <Insight icon="🏋️" value={`${setCount} Set`} label="Exercises Performed" />
+            <Insight icon={<FlameIcon color={theme.colors.brand} />} value={w.calories_burned != null ? `${w.calories_burned} Cal` : "—"} label="Calories Burnt" />
+            <Insight icon={<ClockIcon color={theme.colors.brand} />} value={formatDuration(w.duration_minutes) || "—"} label="Time Taken" />
+            <Insight icon={<TimerIcon color={theme.colors.brand} />} value={avgRest != null ? `${avgRest}s` : "—"} label="Average Rest" />
+            <Insight icon={<DumbbellIcon color={theme.colors.brand} />} value={`${setCount} Set`} label="Exercises Performed" />
           </View>
 
           <Text style={s.sectionTitle}>Exercise Insights</Text>
@@ -123,14 +128,14 @@ export default function WorkoutDetail() {
                 </View>
                 <View style={s.metricRow}>
                   <View style={s.darkMetric}>
-                    <Text style={s.metricIcon}>🏋️</Text>
+                    <DumbbellIcon size={18} color={theme.colors.brand} />
                     <View>
                       <Text style={s.metricValue}>{maxWeight ? `${maxWeight} kg` : "—"}</Text>
                       <Text style={s.metricLabel}>Weight Lifted</Text>
                     </View>
                   </View>
                   <View style={s.darkMetric}>
-                    <Text style={s.metricIcon}>★</Text>
+                    <ChartIcon size={18} color={theme.colors.brand} />
                     <View>
                       <Text style={s.metricValue}>{volume ? `${volume} kg` : "—"}</Text>
                       <Text style={s.metricLabel}>Session Volume</Text>
@@ -208,10 +213,10 @@ function ProgressRing({ pct }: { pct: number }) {
   );
 }
 
-function Insight({ icon, value, label }: { icon: string; value: string; label: string }) {
+function Insight({ icon, value, label }: { icon: ReactNode; value: string; label: string }) {
   return (
     <View style={s.insightCard}>
-      <Text style={{ fontSize: 20 }}>{icon}</Text>
+      {icon}
       <Text style={s.insightValue}>{value}</Text>
       <Text style={s.insightLabel}>{label}</Text>
     </View>

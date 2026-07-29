@@ -8,6 +8,8 @@ import Svg, { Path, Circle, Defs, LinearGradient, Stop } from "react-native-svg"
 import { supabase } from "@/lib/supabase";
 import { theme } from "@/lib/theme";
 import { Workout, typeMeta, formatDuration, totalVolume, isWorkoutCompleted, formatVolumeKg } from "@/lib/types";
+import { DumbbellIcon, FlameIcon, ChartIcon, TrophyIcon } from "@/components/icons";
+import type { ReactNode } from "react";
 
 function startOfWeek(d: Date): Date {
   const x = new Date(d);
@@ -20,6 +22,7 @@ function startOfWeek(d: Date): Date {
 export default function HomeDashboard() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,13 +33,17 @@ export default function HomeDashboard() {
       supabase.from("workouts").select("*, exercises(*, exercise_sets(*))").order("workout_date", { ascending: false }).limit(300),
     ]);
     setEmail(u.user?.email ?? "");
+    if (u.user?.id) {
+      const { data: prof } = await supabase.from("profiles").select("display_name").eq("id", u.user.id).single();
+      setDisplayName((prof?.display_name ?? "").trim());
+    }
     setWorkouts((data ?? []) as Workout[]);
     setLoading(false);
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const name = (email || "Athlete").split("@")[0];
+  const name = displayName || (email || "Athlete").split("@")[0];
   const todayStr = new Date().toISOString().slice(0, 10);
   const weekStart = startOfWeek(new Date());
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -99,25 +106,25 @@ export default function HomeDashboard() {
             label="Total workouts"
             value={String(totalWorkouts)}
             sub={`${completed} completed`}
-            icon="🏋️"
+            icon={<DumbbellIcon color={theme.colors.brand} />}
           />
           <StatTile
             label="Calories Burnt"
             value={calories.toLocaleString()}
             sub={`This week: ${caloriesThisWeek.toLocaleString()}`}
-            icon="🔥"
+            icon={<FlameIcon color={theme.colors.brand} />}
           />
           <StatTile
             label="Total volume"
             value={volumeStat.value}
             sub={volumeStat.sub}
-            icon="💪"
+            icon={<ChartIcon color={theme.colors.brand} />}
           />
           <StatTile
             label="PRs this month"
             value={String(prsThisMonth)}
             sub={`${prsAllTime} all time`}
-            icon="🏆"
+            icon={<TrophyIcon color={theme.colors.brand} />}
           />
         </View>
 
@@ -170,11 +177,11 @@ function StatTile({
   label: string;
   value: string;
   sub?: string;
-  icon: string;
+  icon: ReactNode;
 }) {
   return (
     <View style={s.statTile}>
-      <Text style={s.statTileIcon}>{icon}</Text>
+      <View style={s.statTileIcon}>{icon}</View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={s.statTileValue} numberOfLines={1}>{value}</Text>
         <Text style={s.statTileLabel} numberOfLines={1}>{label}</Text>
@@ -239,7 +246,10 @@ const s = StyleSheet.create({
     width: "48%", flexGrow: 1, flexDirection: "row", alignItems: "center", gap: 10,
     backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: 14, ...theme.shadow,
   },
-  statTileIcon: { fontSize: 22 },
+  statTileIcon: {
+    width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.brandSoft,
+    alignItems: "center", justifyContent: "center",
+  },
   statTileValue: { fontSize: 22, fontWeight: "800", color: theme.colors.ink900 },
   statTileLabel: { marginTop: 2, fontSize: 11, color: theme.colors.ink500, fontWeight: "600" },
   statTileSub: { marginTop: 2, fontSize: 10, color: theme.colors.ink400 },
@@ -250,23 +260,23 @@ const s = StyleSheet.create({
   chartLabels: { flexDirection: "row", justifyContent: "space-between", marginTop: 4 },
   chartLabel: { flex: 1, textAlign: "center", fontSize: 9, color: theme.colors.ink400 },
   sheet: {
-    marginTop: 20, backgroundColor: theme.colors.sheet, borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    padding: 20, minHeight: 280,
+    marginTop: 20, backgroundColor: theme.colors.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 16, paddingTop: 20, paddingBottom: 20, minHeight: 280,
   },
   sheetHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  sheetTitle: { fontSize: 18, fontWeight: "800", color: theme.colors.onSheet },
+  sheetTitle: { fontSize: 18, fontWeight: "800", color: theme.colors.ink900 },
   seeAll: { fontSize: 14, fontWeight: "700", color: theme.colors.brand },
-  emptySheet: { color: theme.colors.onSheetMuted, fontSize: 14 },
+  emptySheet: { color: theme.colors.ink500, fontSize: 14 },
   row: {
-    flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: theme.colors.white,
-    borderRadius: theme.radius.lg, padding: 12, marginBottom: 10,
+    flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg, padding: 12, marginBottom: 10, ...theme.shadow,
   },
   rowIcon: {
-    width: 48, height: 48, borderRadius: theme.radius.full, backgroundColor: "#F0F1F4",
+    width: 48, height: 48, borderRadius: theme.radius.full, backgroundColor: theme.colors.surface2,
     alignItems: "center", justifyContent: "center",
   },
-  rowTitle: { fontSize: 15, fontWeight: "700", color: theme.colors.onSheet },
-  rowMeta: { marginTop: 2, fontSize: 12, color: theme.colors.onSheetMuted },
+  rowTitle: { fontSize: 15, fontWeight: "700", color: theme.colors.ink900 },
+  rowMeta: { marginTop: 2, fontSize: 12, color: theme.colors.ink500 },
   play: {
     width: 36, height: 36, borderRadius: theme.radius.full, backgroundColor: theme.colors.brand,
     alignItems: "center", justifyContent: "center",
