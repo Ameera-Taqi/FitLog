@@ -26,6 +26,13 @@ const PRODUCT_IMAGES: Record<string, ImageSourcePropType> = {
   "duffel-bag": require("@/assets/products/duffel-bag.png"),
   "tshirt": require("@/assets/products/tshirt.png"),
   "meal-prep": require("@/assets/products/meal-prep.png"),
+  "whey-vanilla": require("@/assets/products/whey-vanilla.png"),
+  "bcaa-amino": require("@/assets/products/bcaa-amino.png"),
+  "protein-bars": require("@/assets/products/protein-bars.png"),
+  "multivitamin": require("@/assets/products/multivitamin.png"),
+  "fat-burner": require("@/assets/products/fat-burner.png"),
+  "protein-cookie": require("@/assets/products/protein-cookie.png"),
+  "l-glutamine": require("@/assets/products/l-glutamine.png"),
 };
 
 const money = (n: number, cur = "USD") =>
