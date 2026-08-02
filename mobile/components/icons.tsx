@@ -91,6 +91,14 @@ export function TimerIcon({ size = 22, color = "#fff", strokeWidth = 2 }: IconPr
   );
 }
 
+export function BagIcon({ size = 22, color = "#fff", strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...svgProps(size, color, strokeWidth)}>
+      <Path d="M3 9h18l-1.4 9.3a2 2 0 0 1-2 1.7H6.4a2 2 0 0 1-2-1.7L3 9zM8 9V6a4 4 0 0 1 8 0v3" />
+    </Svg>
+  );
+}
+
 export function UserIcon({ size = 22, color = "#fff", strokeWidth = 2 }: IconProps) {
   return (
     <Svg {...svgProps(size, color, strokeWidth)}>

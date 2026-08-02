@@ -2,7 +2,7 @@ import { Tabs } from "expo-router";
 import { View } from "react-native";
 import type { ReactElement } from "react";
 import { theme } from "@/lib/theme";
-import { DumbbellIcon, HomeIcon, PlusIcon, UserIcon, type IconProps } from "@/components/icons";
+import { DumbbellIcon, HomeIcon, PlusIcon, UserIcon, BagIcon, type IconProps } from "@/components/icons";
 
 function TabIcon({ Glyph, focused }: { Glyph: (p: IconProps) => ReactElement; focused: boolean }) {
   return (
@@ -52,6 +52,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="new"
         options={{ title: "Log", tabBarIcon: ({ focused }) => <TabIcon Glyph={PlusIcon} focused={focused} /> }}
+      />
+      <Tabs.Screen
+        name="shop"
+        options={{ title: "Shop", tabBarIcon: ({ focused }) => <TabIcon Glyph={BagIcon} focused={focused} /> }}
       />
       <Tabs.Screen
         name="profile"

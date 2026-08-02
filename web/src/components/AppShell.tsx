@@ -11,6 +11,7 @@ const NAV = [
   { href: "/dashboard", labelKey: "nav.dashboard", icon: DashIcon },
   { href: "/workouts", labelKey: "nav.workouts", icon: ListIcon },
   { href: "/workouts/new", labelKey: "nav.log", icon: PlusIcon },
+  { href: "/shop", labelKey: "nav.shop", icon: ShopIcon },
   { href: "/profile", labelKey: "nav.profile", icon: UserIcon },
 ];
 
@@ -146,6 +147,13 @@ function UserIcon({ className = "" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+function ShopIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9h18l-1.4 9.3a2 2 0 0 1-2 1.7H6.4a2 2 0 0 1-2-1.7L3 9zM8 9V6a4 4 0 0 1 8 0v3" />
     </svg>
   );
 }
