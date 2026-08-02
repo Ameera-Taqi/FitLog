@@ -210,7 +210,8 @@ export function WorkoutForm({ initial, unit = "kg" }: { initial?: Workout; unit?
         router.push(`/workouts/${initial.id}`);
       } else {
         const id = await createWorkout(dateStr);
-        router.push(`/workouts/${id}`);
+        // Auto-generate the motivational summary on arrival at the new entry.
+        router.push(`/workouts/${id}?summary=1`);
       }
       router.refresh();
     } catch (err: unknown) {

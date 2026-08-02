@@ -46,11 +46,12 @@ export default function Profile() {
   const load = useCallback(async () => {
     const { data: u } = await supabase.auth.getUser();
     setEmail(u.user?.email ?? "");
+    // Display name lives in Supabase Auth user metadata.
+    setDisplayName(((u.user?.user_metadata?.display_name as string) ?? "").trim());
     const uid = u.user?.id;
     if (uid) {
       const { data: prof } = await supabase.from("profiles").select("*").eq("id", uid).single();
       if (prof) {
-        setDisplayName(prof.display_name ?? "");
         setUnit((prof.unit_preference as Unit) ?? "kg");
         setHeight(prof.height_cm != null ? String(prof.height_cm) : "");
         setBodyWeight(prof.body_weight_kg != null ? String(prof.body_weight_kg) : "");
@@ -81,9 +82,12 @@ export default function Profile() {
     if (!uid) { Alert.alert("Session expired", "Please sign in again."); return; }
     setSaving(true);
     setSaved(false);
+    // Display name → Supabase Auth user metadata.
+    const { error: metaErr } = await supabase.auth.updateUser({ data: { display_name: displayName.trim() || null } });
+    if (metaErr) { setSaving(false); Alert.alert("Couldn't save", metaErr.message); return; }
+    // Everything else → the profiles table.
     const { error } = await supabase.from("profiles").upsert({
       id: uid,
-      display_name: displayName.trim() || null,
       unit_preference: unit,
       height_cm: num(height),
       body_weight_kg: num(bodyWeight),

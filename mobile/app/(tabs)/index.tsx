@@ -8,7 +8,7 @@ import Svg, { Path, Circle, Defs, LinearGradient, Stop } from "react-native-svg"
 import { supabase } from "@/lib/supabase";
 import { theme } from "@/lib/theme";
 import { Workout, typeMeta, formatDuration, totalVolume, isWorkoutCompleted, formatVolumeKg } from "@/lib/types";
-import { DumbbellIcon, FlameIcon, ChartIcon, TrophyIcon } from "@/components/icons";
+import { DumbbellIcon, FlameIcon, ChartIcon, TrophyIcon, TargetIcon } from "@/components/icons";
 import type { ReactNode } from "react";
 
 function startOfWeek(d: Date): Date {
@@ -24,6 +24,7 @@ export default function HomeDashboard() {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [focus, setFocus] = useState<{ neglected: string[]; minCount: number; balanced: boolean; totalWorkouts: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -33,17 +34,29 @@ export default function HomeDashboard() {
       supabase.from("workouts").select("*, exercises(*, exercise_sets(*))").order("workout_date", { ascending: false }).limit(300),
     ]);
     setEmail(u.user?.email ?? "");
-    if (u.user?.id) {
-      const { data: prof } = await supabase.from("profiles").select("display_name").eq("id", u.user.id).single();
-      setDisplayName((prof?.display_name ?? "").trim());
-    }
+    // Display name lives in Supabase Auth user metadata.
+    setDisplayName(((u.user?.user_metadata?.display_name as string) ?? "").trim());
     setWorkouts((data ?? []) as Workout[]);
     setLoading(false);
+    // Which muscle group have you neglected in the last 7 days?
+    const { data: focusRes, error: focusErr } = await supabase.functions.invoke("neglected-muscle");
+    if (!focusErr && focusRes && !focusRes.error) setFocus(focusRes);
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const name = displayName || (email || "Athlete").split("@")[0];
+
+  const focusMessage = !focus
+    ? null
+    : focus.totalWorkouts === 0
+      ? "No workouts in the last 7 days — time to train!"
+      : focus.balanced
+        ? "Nicely balanced this week — keep it up."
+        : focus.minCount === 0
+          ? `You've skipped ${focus.neglected[0]} in the last 7 days — give it some love.`
+          : `${focus.neglected[0]} is your least-trained group this week.`;
+  const focusChip = focus && focus.totalWorkouts > 0 && !focus.balanced ? focus.neglected[0] : null;
   const todayStr = new Date().toISOString().slice(0, 10);
   const weekStart = startOfWeek(new Date());
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -127,6 +140,17 @@ export default function HomeDashboard() {
             icon={<TrophyIcon color={theme.colors.brand} />}
           />
         </View>
+
+        {focusMessage ? (
+          <View style={s.focusCard}>
+            <View style={s.focusIcon}><TargetIcon size={20} color={theme.colors.brand} /></View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={s.focusTitle}>This week&apos;s focus</Text>
+              <Text style={s.focusMsg}>{focusMessage}</Text>
+            </View>
+            {focusChip ? <View style={s.focusChip}><Text style={s.focusChipText}>{focusChip}</Text></View> : null}
+          </View>
+        ) : null}
 
         <View style={s.chartCard}>
           <View style={s.chartHead}>
@@ -253,6 +277,12 @@ const s = StyleSheet.create({
   statTileValue: { fontSize: 22, fontWeight: "800", color: theme.colors.ink900 },
   statTileLabel: { marginTop: 2, fontSize: 11, color: theme.colors.ink500, fontWeight: "600" },
   statTileSub: { marginTop: 2, fontSize: 10, color: theme.colors.ink400 },
+  focusCard: { marginTop: 12, marginHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: 14, ...theme.shadow },
+  focusIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.brandSoft, alignItems: "center", justifyContent: "center" },
+  focusTitle: { fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5, color: theme.colors.ink500 },
+  focusMsg: { marginTop: 3, fontSize: 13, fontWeight: "600", color: theme.colors.ink800 },
+  focusChip: { backgroundColor: theme.colors.brandSoft, borderRadius: theme.radius.full, paddingHorizontal: 10, paddingVertical: 5 },
+  focusChipText: { color: theme.colors.brand, fontWeight: "800", fontSize: 12 },
   chartCard: { marginTop: 16, marginHorizontal: 16, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: 16, ...theme.shadow },
   chartHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   chartTitle: { fontSize: 16, fontWeight: "800", color: theme.colors.ink900 },

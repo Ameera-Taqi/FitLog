@@ -102,7 +102,8 @@ export default function NewWorkout() {
 
       // reset & navigate
       setName(""); setLocation(""); setDuration(""); setCalories(""); setMuscles([]); setExercises([emptyEx()]);
-      router.push(`/workout/${w.id}`);
+      // Auto-generate the motivational summary on arrival at the new entry.
+      router.push(`/workout/${w.id}?summary=1`);
     } catch (err: any) {
       Alert.alert("Couldn't save", err?.message ?? "Something went wrong.");
       savingRef.current = false;

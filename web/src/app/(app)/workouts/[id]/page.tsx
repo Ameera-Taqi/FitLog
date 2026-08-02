@@ -9,6 +9,7 @@ import { getT } from "@/lib/i18n/server";
 import { DeleteWorkoutButton } from "@/components/DeleteWorkoutButton";
 import { ExerciseCompleteToggle } from "@/components/ExerciseCompleteToggle";
 import { PhotoManager, type PhotoItem } from "@/components/PhotoManager";
+import { WorkoutSummary } from "@/components/WorkoutSummary";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ function ProgressRing({ pct }: { pct: number }) {
   );
 }
 
-export default async function WorkoutDetailPage({ params }: { params: { id: string } }) {
+export default async function WorkoutDetailPage({ params, searchParams }: { params: { id: string }; searchParams?: { summary?: string } }) {
   const { id } = params;
   const supabase = await createClient();
 
@@ -63,6 +64,16 @@ export default async function WorkoutDetailPage({ params }: { params: { id: stri
   const { t } = await getT();
   const type = workoutTypeMeta(w.workout_type);
   const exercises = (w.exercises ?? []).slice().sort((a, b) => a.position - b.position);
+  const summaryPayload = {
+    workoutName: w.name,
+    workoutType: w.workout_type,
+    durationMinutes: w.duration_minutes ?? undefined,
+    unit,
+    exercises: exercises.map((ex) => ({
+      name: ex.name,
+      sets: (ex.exercise_sets ?? []).map((sx) => ({ reps: sx.reps, weight: sx.weight })),
+    })),
+  };
   const volume = totalVolume(exercises);
   const volumeDisplay = volume ? `${Math.round(kgToUnit(volume, unit)).toLocaleString()} ${unit}` : "—";
   const totalSets = exercises.reduce((s, e) => s + (e.exercise_sets?.length ?? 0), 0);
@@ -122,6 +133,10 @@ export default async function WorkoutDetailPage({ params }: { params: { id: stri
             <InsightStat icon={<SetsIcon />} value={`${totalSets} Set`} label="Exercises Performed" />
           </div>
 
+          <div className="mt-6">
+            <WorkoutSummary payload={summaryPayload} autoGenerate={searchParams?.summary === "1"} />
+          </div>
+
           <div className="mt-8">
             <h2 className="text-lg font-extrabold">{t("detail.exercises")} Insights</h2>
             <div className="mt-3 space-y-3">
@@ -175,21 +190,19 @@ export default async function WorkoutDetailPage({ params }: { params: { id: stri
                           <table className="w-full min-w-[320px] text-sm">
                             <thead>
                               <tr className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                                <th className="pb-1 pe-3 text-start">{t("detail.set")}</th>
+                                <th className="pb-1 pe-3 text-start">{t("form.sets")}</th>
                                 <th className="pb-1 pe-3 text-start">{t("detail.reps")}</th>
                                 <th className="pb-1 pe-3 text-start">{t("detail.weight")}</th>
                                 <th className="pb-1 text-start">{t("detail.rest")}</th>
                               </tr>
                             </thead>
                             <tbody className="tabular-nums">
-                              {sets.map((s) => (
-                                <tr key={s.id} className="border-t border-[#EEE]">
-                                  <td className="py-1.5 pe-3 font-semibold text-[#9CA3AF]">{s.set_number}</td>
-                                  <td className="py-1.5 pe-3">{s.reps ?? "—"}</td>
-                                  <td className="py-1.5 pe-3">{formatWeight(s.weight, unit)}</td>
-                                  <td className="py-1.5">{s.rest_seconds != null ? `${s.rest_seconds}s` : "—"}</td>
-                                </tr>
-                              ))}
+                              <tr className="border-t border-[#EEE]">
+                                <td className="py-1.5 pe-3 font-semibold">{sets.length}</td>
+                                <td className="py-1.5 pe-3">{sets[0]?.reps ?? "—"}</td>
+                                <td className="py-1.5 pe-3">{formatWeight(sets[0]?.weight ?? null, unit)}</td>
+                                <td className="py-1.5">{sets[0]?.rest_seconds != null ? `${sets[0].rest_seconds}s` : "—"}</td>
+                              </tr>
                             </tbody>
                           </table>
                         </div>

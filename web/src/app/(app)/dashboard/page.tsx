@@ -5,10 +5,11 @@ import { WeeklyBars, type WeekBar } from "@/components/WeeklyBars";
 import { WorkoutCard } from "@/components/WorkoutCard";
 import type { Workout } from "@/lib/types";
 import { totalVolume, formatVolume, formatDuration } from "@/lib/format";
-import { getMyUnit, getMyProfile } from "@/lib/profile";
+import { getMyUnit } from "@/lib/profile";
 import { getT } from "@/lib/i18n/server";
 import { workoutTypeMeta } from "@/lib/constants";
 import { fetchWorkoutPhotoHeroMap } from "@/lib/workout-hero";
+import { WeeklyFocus } from "@/components/WeeklyFocus";
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +37,8 @@ export default async function DashboardPage() {
   const { t } = await getT();
   const photoHeroMap = await fetchWorkoutPhotoHeroMap(supabase, workouts);
   const email = userData.user?.email ?? "";
-  const profile = await getMyProfile();
-  const displayName = profile?.display_name?.trim() || email.split("@")[0] || "Athlete";
+  const metaName = ((userData.user?.user_metadata?.display_name as string) ?? "").trim();
+  const displayName = metaName || email.split("@")[0] || "Athlete";
 
   const now = new Date();
   const weekStart = startOfWeek(now);
@@ -138,6 +139,8 @@ export default async function DashboardPage() {
           icon={<IconTrophy />}
         />
       </div>
+
+      <WeeklyFocus />
 
       {totalWorkouts > 0 ? (
         <div className="grid gap-4 lg:grid-cols-5 lg:items-stretch">

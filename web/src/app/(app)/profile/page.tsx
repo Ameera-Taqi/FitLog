@@ -35,7 +35,8 @@ export default async function ProfilePage() {
     prs: workouts.reduce((s, w) => s + (w.exercises?.filter((e) => e.is_pr).length ?? 0), 0),
     calories: workouts.reduce((s, w) => s + (w.calories_burned ?? 0), 0),
   };
-  const name = (user.email ?? "Athlete").split("@")[0];
+  const metaDisplayName = ((user.user_metadata?.display_name as string) ?? "").trim();
+  const name = metaDisplayName || (user.email ?? "Athlete").split("@")[0];
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -65,7 +66,7 @@ export default async function ProfilePage() {
         </div>
       </div>
 
-      <ProfileForm initial={(data as Profile) ?? null} email={user.email ?? ""} />
+      <ProfileForm initial={(data as Profile) ?? null} email={user.email ?? ""} initialDisplayName={metaDisplayName} />
     </div>
   );
 }

@@ -63,6 +63,16 @@ export function PlusIcon({ size = 22, color = "#fff", strokeWidth = 2.4 }: IconP
   );
 }
 
+export function TargetIcon({ size = 22, color = "#fff", strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg {...svgProps(size, color, strokeWidth)}>
+      <Circle cx="12" cy="12" r="9" />
+      <Circle cx="12" cy="12" r="5" />
+      <Circle cx="12" cy="12" r="1" />
+    </Svg>
+  );
+}
+
 export function ClockIcon({ size = 22, color = "#fff", strokeWidth = 2 }: IconProps) {
   return (
     <Svg {...svgProps(size, color, strokeWidth)}>

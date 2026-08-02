@@ -13,12 +13,13 @@ function num(s: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function ProfileForm({ initial, email }: { initial: Profile | null; email: string }) {
+export function ProfileForm({ initial, email, initialDisplayName = "" }: { initial: Profile | null; email: string; initialDisplayName?: string }) {
   const router = useRouter();
   const supabase = createClient();
   const { t } = useI18n();
 
-  const [displayName, setDisplayName] = useState(initial?.display_name ?? "");
+  // Display name lives in Supabase Auth user metadata (not the profiles table).
+  const [displayName, setDisplayName] = useState(initialDisplayName);
   const [unit, setUnit] = useState<UnitPreference>(initial?.unit_preference ?? "kg");
   const [heightCm, setHeightCm] = useState(initial?.height_cm?.toString() ?? "");
   const [dob, setDob] = useState(initial?.date_of_birth ?? "");
@@ -45,9 +46,19 @@ export function ProfileForm({ initial, email }: { initial: Profile | null; email
       return;
     }
 
+    // Display name → Supabase Auth user metadata.
+    const { error: metaErr } = await supabase.auth.updateUser({
+      data: { display_name: displayName.trim() || null },
+    });
+    if (metaErr) {
+      setError(metaErr.message);
+      setSaving(false);
+      return;
+    }
+
+    // Everything else → the profiles table.
     const payload = {
       id: uid,
-      display_name: displayName.trim() || null,
       unit_preference: unit,
       height_cm: num(heightCm),
       date_of_birth: dob || null,

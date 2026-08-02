@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
@@ -10,13 +10,16 @@ import { FlameIcon, ClockIcon, TimerIcon, DumbbellIcon, ChartIcon } from "@/comp
 import type { ReactNode } from "react";
 
 export default function WorkoutDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, summary: autoSummary } = useLocalSearchParams<{ id: string; summary?: string }>();
   const router = useRouter();
   // Go back if there's history, otherwise fall back to the workouts list
   // (e.g. when the screen was opened via a deep link / direct URL).
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/(tabs)/workouts"));
   const [w, setW] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -25,7 +28,49 @@ export default function WorkoutDetail() {
     setLoading(false);
   }, [id]);
 
+  async function generateSummary() {
+    if (!w) return;
+    setSummaryLoading(true);
+    setSummaryError(null);
+    setSummary(null);
+    const exs = (w.exercises ?? []).slice().sort((a, b) => a.position - b.position);
+    const payload = {
+      workoutName: w.name,
+      workoutType: w.workout_type,
+      durationMinutes: w.duration_minutes ?? undefined,
+      unit: "kg",
+      exercises: exs.map((ex) => ({
+        name: ex.name,
+        sets: (ex.exercise_sets ?? []).map((st) => ({ reps: st.reps, weight: st.weight })),
+      })),
+    };
+    const { data, error } = await supabase.functions.invoke("workout-summary", { body: payload });
+    setSummaryLoading(false);
+    if (error) {
+      let msg = "Couldn't generate a summary. Please try again.";
+      try {
+        const ctx = (error as { context?: Response }).context;
+        const j = ctx ? await ctx.json() : null;
+        if (j?.error === "not_configured") msg = "AI summaries aren't set up yet (OpenRouter key missing).";
+      } catch { /* keep generic */ }
+      setSummaryError(msg);
+      return;
+    }
+    if (data?.summary) setSummary(data.summary as string);
+    else setSummaryError("Couldn't generate a summary. Please try again.");
+  }
+
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Auto-generate the motivational summary once when arriving right after logging.
+  const didAutoSummary = useRef(false);
+  useEffect(() => {
+    if (autoSummary === "1" && w && !didAutoSummary.current) {
+      didAutoSummary.current = true;
+      generateSummary();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSummary, w]);
 
   function confirmDelete() {
     Alert.alert("Delete workout", "This can't be undone.", [
@@ -104,6 +149,22 @@ export default function WorkoutDetail() {
             <Insight icon={<DumbbellIcon color={theme.colors.brand} />} value={`${setCount} Set`} label="Exercises Performed" />
           </View>
 
+          <View style={s.summaryCard}>
+            <View style={s.summaryHead}>
+              <Text style={s.summaryTitle}>Session summary</Text>
+              <TouchableOpacity style={s.summaryBtn} onPress={generateSummary} disabled={summaryLoading}>
+                {summaryLoading
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={s.summaryBtnText}>{summary ? "Regenerate" : "✨ Motivate me"}</Text>}
+              </TouchableOpacity>
+            </View>
+            {summaryError ? <Text style={s.summaryError}>{summaryError}</Text> : null}
+            {summary ? <Text style={s.summaryText}>{summary}</Text> : null}
+            {!summary && !summaryError && !summaryLoading
+              ? <Text style={s.summaryHint}>Get an AI motivational recap of this session.</Text>
+              : null}
+          </View>
+
           <Text style={s.sectionTitle}>Exercise Insights</Text>
           {exercises.length === 0 ? (
             <View style={s.whiteCard}><Text style={{ color: theme.colors.onSheetMuted }}>No exercises recorded.</Text></View>
@@ -145,19 +206,17 @@ export default function WorkoutDetail() {
                 {sets.length > 0 && (
                   <View style={{ marginTop: 10 }}>
                     <View style={s.setHead}>
-                      <Text style={[s.setHeadText, { width: 32 }]}>SET</Text>
+                      <Text style={[s.setHeadText, { flex: 1 }]}>SETS</Text>
                       <Text style={[s.setHeadText, { flex: 1 }]}>REPS</Text>
                       <Text style={[s.setHeadText, { flex: 1 }]}>WEIGHT</Text>
                       <Text style={[s.setHeadText, { flex: 1 }]}>REST</Text>
                     </View>
-                    {sets.map((st) => (
-                      <View key={st.id} style={s.setRow}>
-                        <Text style={[s.setCell, { width: 32, color: theme.colors.onSheetMuted, fontWeight: "700" }]}>{st.set_number}</Text>
-                        <Text style={[s.setCell, { flex: 1 }]}>{st.reps ?? "—"}</Text>
-                        <Text style={[s.setCell, { flex: 1 }]}>{st.weight != null ? `${st.weight} kg` : "—"}</Text>
-                        <Text style={[s.setCell, { flex: 1 }]}>{st.rest_seconds != null ? `${st.rest_seconds}s` : "—"}</Text>
-                      </View>
-                    ))}
+                    <View style={s.setRow}>
+                      <Text style={[s.setCell, { flex: 1, fontWeight: "700" }]}>{sets.length}</Text>
+                      <Text style={[s.setCell, { flex: 1 }]}>{sets[0]?.reps ?? "—"}</Text>
+                      <Text style={[s.setCell, { flex: 1 }]}>{sets[0]?.weight != null ? `${sets[0].weight} kg` : "—"}</Text>
+                      <Text style={[s.setCell, { flex: 1 }]}>{sets[0]?.rest_seconds != null ? `${sets[0].rest_seconds}s` : "—"}</Text>
+                    </View>
                   </View>
                 )}
                 {ex.is_pr && <Text style={s.prTag}>★ Personal Record</Text>}
@@ -250,6 +309,14 @@ const s = StyleSheet.create({
   insightLabel: { marginTop: 2, fontSize: 11, color: theme.colors.onSheetMuted, fontWeight: "600" },
   sectionTitle: { marginTop: 22, marginBottom: 10, fontSize: 18, fontWeight: "800", color: theme.colors.onSheet },
   whiteCard: { backgroundColor: theme.colors.white, borderRadius: theme.radius.lg, padding: 14, marginBottom: 10 },
+  summaryCard: { backgroundColor: theme.colors.white, borderRadius: theme.radius.lg, padding: 16, marginTop: 4 },
+  summaryHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  summaryTitle: { fontSize: 16, fontWeight: "800", color: theme.colors.onSheet },
+  summaryBtn: { backgroundColor: theme.colors.brand, borderRadius: theme.radius.full, paddingHorizontal: 14, paddingVertical: 8, minWidth: 44, alignItems: "center" },
+  summaryBtnText: { color: theme.colors.white, fontWeight: "800", fontSize: 12 },
+  summaryText: { marginTop: 12, fontSize: 14, lineHeight: 20, color: "#7C2D12", backgroundColor: "#FFF1EC", borderRadius: theme.radius.md, padding: 12 },
+  summaryError: { marginTop: 12, fontSize: 13, color: theme.colors.danger, backgroundColor: "#FEECEC", borderRadius: theme.radius.md, padding: 12 },
+  summaryHint: { marginTop: 8, fontSize: 13, color: theme.colors.onSheetMuted },
   whiteCardDone: { borderWidth: 2, borderColor: "rgba(255,107,78,0.45)" },
   exTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   exName: { fontSize: 15, fontWeight: "700", color: theme.colors.onSheet, flex: 1 },
