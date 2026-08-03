@@ -78,6 +78,22 @@ Deno.serve(async (req: Request) => {
       return json({ error: "gateway_error", status: mfRes.status, message: mfData?.Message ?? "MyFatoorah request failed", validationErrors: mfData?.ValidationErrors ?? null }, 502);
     }
 
+    // Persist the order so the payment-webhook can look it up by reference and
+    // flip payment_status. RLS blocks client writes, so use the service role.
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+    await admin.from("orders").insert({
+      user_id: user.id,
+      reference,
+      invoice_id: String(mfData.Data.InvoiceId),
+      amount: total,
+      currency: CURRENCY,
+      items: invoiceItems,
+      payment_status: "awaiting_payment",
+    });
+
     return json({ paymentUrl: mfData.Data.InvoiceURL, invoiceId: mfData.Data.InvoiceId, reference, total, currency: CURRENCY });
   } catch (e) {
     return json({ error: "exception", message: String(e) });
