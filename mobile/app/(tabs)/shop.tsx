@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Linking, ActivityIndicator, Image, ImageSourcePropType } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Image, ImageSourcePropType } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { theme } from "@/lib/theme";
 
@@ -43,7 +43,7 @@ export default function Shop() {
   const [cat, setCat] = useState("all");
   // cart is a productId -> quantity map, kept in sync with the cart_items table.
   const [cart, setCart] = useState<Record<string, number>>({});
-  const [checkingOut, setCheckingOut] = useState(false);
+  const router = useRouter();
 
   const load = useCallback(async () => {
     const { data } = await supabase.from("products").select("*").eq("in_stock", true).order("position");
@@ -70,26 +70,6 @@ export default function Shop() {
   async function clearCart() {
     setCart({});
     await supabase.from("cart_items").delete().neq("product_id", "00000000-0000-0000-0000-000000000000");
-  }
-
-  // Checkout: the edge function reads the cart from the DB, computes the total
-  // server-side, calls MyFatoorah, and returns a hosted URL we open in the browser.
-  async function checkout() {
-    setCheckingOut(true);
-    const { data, error } = await supabase.functions.invoke("checkout-cart", { body: {} });
-    setCheckingOut(false);
-    if (error || !data?.paymentUrl) {
-      let msg = "Couldn't start checkout. Please try again.";
-      try {
-        const ctx = (error as { context?: Response } | null)?.context;
-        const j = ctx ? await ctx.json() : null;
-        if (j?.error === "not_configured") msg = "Payments aren't set up yet (MyFatoorah key missing).";
-        else if (j?.error === "empty_cart") msg = "Your cart is empty.";
-      } catch { /* keep generic */ }
-      Alert.alert("Checkout", msg);
-      return;
-    }
-    Linking.openURL(data.paymentUrl as string);
   }
 
   const categories = useMemo(() => ["all", ...Array.from(new Set(products.map((p) => p.category)))], [products]);
@@ -145,10 +125,8 @@ export default function Shop() {
           <Text style={s.cartText}>{count} {count === 1 ? "item" : "items"} · {money(total, currency)}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <TouchableOpacity onPress={clearCart}><Text style={s.clear}>Clear</Text></TouchableOpacity>
-            <TouchableOpacity style={s.checkout} onPress={checkout} disabled={checkingOut}>
-              {checkingOut
-                ? <ActivityIndicator color={theme.colors.brandDark} size="small" />
-                : <Text style={s.checkoutText}>Checkout</Text>}
+            <TouchableOpacity style={s.checkout} onPress={() => router.push("/cart")}>
+              <Text style={s.checkoutText}>View cart</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import { createClient } from "@/lib/supabase/client";
 import { type Product, formatPrice, productImageSrc } from "@/lib/product";
@@ -12,7 +13,6 @@ export function ShopClient({ products }: { products: Product[] }) {
   // cart is a productId -> quantity map, kept in sync with the cart_items table.
   const [cart, setCart] = useState<Record<string, number>>({});
   const [adding, setAdding] = useState<string | null>(null);
-  const [checkingOut, setCheckingOut] = useState(false);
 
   // Load the persisted cart on mount.
   const loadCart = useCallback(async () => {
@@ -54,26 +54,6 @@ export function ShopClient({ products }: { products: Product[] }) {
   async function clearCart() {
     setCart({});
     await supabase.from("cart_items").delete().neq("product_id", "00000000-0000-0000-0000-000000000000");
-  }
-
-  // Checkout: the edge function reads the cart from the DB, computes the total
-  // server-side, calls MyFatoorah, and returns a hosted payment URL to redirect to.
-  async function checkout() {
-    setCheckingOut(true);
-    const { data, error } = await supabase.functions.invoke("checkout-cart", { body: {} });
-    if (error || !data?.paymentUrl) {
-      setCheckingOut(false);
-      let msg = t("shop.payError");
-      try {
-        const ctx = (error as { context?: Response } | null)?.context;
-        const j = ctx ? await ctx.json() : null;
-        if (j?.error === "not_configured") msg = t("shop.payNotConfigured");
-        else if (j?.error === "empty_cart") msg = t("shop.empty");
-      } catch { /* keep generic */ }
-      alert(msg);
-      return;
-    }
-    window.location.href = data.paymentUrl as string;
   }
 
   return (
@@ -158,14 +138,12 @@ export function ShopClient({ products }: { products: Product[] }) {
               <button type="button" onClick={clearCart} className="rounded-full px-3 py-1.5 text-xs font-bold text-white/80 hover:bg-white/10">
                 {t("shop.clear")}
               </button>
-              <button
-                type="button"
-                onClick={checkout}
-                disabled={checkingOut}
-                className="rounded-full bg-white px-4 py-1.5 text-xs font-black uppercase tracking-wide text-brand-700 disabled:opacity-70"
+              <Link
+                href="/shop/cart"
+                className="rounded-full bg-white px-4 py-1.5 text-xs font-black uppercase tracking-wide text-brand-700"
               >
-                {checkingOut ? t("shop.starting") : t("shop.checkout")}
-              </button>
+                {t("shop.viewCart")}
+              </Link>
             </div>
           </div>
         </div>
