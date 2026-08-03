@@ -75,7 +75,7 @@ export function ShopClient({ products }: { products: Product[] }) {
       </div>
 
       {/* Product grid */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
         {shown.map((p) => (
           <div key={p.id} className="card group flex flex-col overflow-hidden">
             {/* Product tile: real photo when available, gradient otherwise */}
