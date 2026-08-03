@@ -61,19 +61,17 @@ export default async function DashboardPage() {
     .filter((w) => new Date(w.workout_date + "T00:00:00") >= monthStart)
     .reduce((sum, w) => sum + (w.exercises?.filter((e) => e.is_pr).length ?? 0), 0);
 
-  const weeks: WeekBar[] = [];
-  for (let i = 7; i >= 0; i--) {
-    const ws = new Date(weekStart);
-    ws.setDate(ws.getDate() - i * 7);
-    const we = new Date(ws);
-    we.setDate(we.getDate() + 7);
-    const count = workouts.filter((w) => {
-      const d = new Date(w.workout_date + "T00:00:00");
-      return d >= ws && d < we;
-    }).length;
-    weeks.push({
-      label: ws.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-      fullLabel: ws.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+  // Last 7 days of workout activity (one point per day).
+  const days: WeekBar[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const day = new Date(now);
+    day.setHours(0, 0, 0, 0);
+    day.setDate(day.getDate() - i);
+    const dayStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+    const count = workouts.filter((w) => w.workout_date === dayStr).length;
+    days.push({
+      label: day.toLocaleDateString(undefined, { weekday: "short" }),
+      fullLabel: day.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
       value: count,
     });
   }
@@ -145,7 +143,7 @@ export default async function DashboardPage() {
       {totalWorkouts > 0 ? (
         <div className="grid gap-4 lg:grid-cols-5 lg:items-stretch">
           <div className="lg:col-span-3">
-            <WeeklyBars data={weeks} />
+            <WeeklyBars data={days} />
           </div>
 
           {/* Recent / today list — same dark card chrome as chart */}

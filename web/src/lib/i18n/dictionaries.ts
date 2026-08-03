@@ -70,6 +70,7 @@ const en = {
   chart: {
     trainingVolume: "Training volume",
     lastWeeks: "last {n} weeks",
+    lastDays: "last {n} days",
     workoutsUnit: "workouts",
   },
   workouts: {
@@ -386,6 +387,7 @@ const ar: Dict = {
   chart: {
     trainingVolume: "حجم التدريب",
     lastWeeks: "آخر {n} أسابيع",
+    lastDays: "آخر {n} أيام",
     workoutsUnit: "تمارين",
   },
   workouts: {

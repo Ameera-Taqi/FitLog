@@ -76,24 +76,22 @@ export default function HomeDashboard() {
   const recent = workouts.slice(0, 5);
   const sheetList = todayWorkouts.length > 0 ? todayWorkouts : recent;
 
+  // Last 7 days of workout activity (one point per day).
   const weeks = useMemo(() => {
     const out: { label: string; value: number }[] = [];
-    for (let i = 7; i >= 0; i--) {
-      const ws = new Date(weekStart);
-      ws.setDate(ws.getDate() - i * 7);
-      const we = new Date(ws);
-      we.setDate(we.getDate() + 7);
-      const count = workouts.filter((w) => {
-        const d = new Date(w.workout_date + "T00:00:00");
-        return d >= ws && d < we;
-      }).length;
+    for (let i = 6; i >= 0; i--) {
+      const day = new Date();
+      day.setHours(0, 0, 0, 0);
+      day.setDate(day.getDate() - i);
+      const dayStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+      const count = workouts.filter((w) => w.workout_date === dayStr).length;
       out.push({
-        label: ws.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        label: day.toLocaleDateString(undefined, { weekday: "short" }),
         value: count,
       });
     }
     return out;
-  }, [workouts, weekStart]);
+  }, [workouts]);
 
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
@@ -155,7 +153,7 @@ export default function HomeDashboard() {
         <View style={s.chartCard}>
           <View style={s.chartHead}>
             <Text style={s.chartTitle}>Training Volume</Text>
-            <Text style={s.chartSub}>Last 8 weeks</Text>
+            <Text style={s.chartSub}>Last 7 days</Text>
           </View>
           <WeeklyChart data={weeks} />
         </View>

@@ -35,7 +35,7 @@ export function WeeklyBars({ data }: { data: WeekBar[] }) {
       <div className="mb-4 flex items-center justify-between gap-3">
         <h3 className="text-base font-bold text-ink-900">{t("chart.trainingVolume")}</h3>
         <span className="rounded-full bg-surface2 px-3 py-1 text-xs font-semibold text-ink-500 ring-1 ring-ink-200">
-          {t("chart.lastWeeks", { n: data.length })}
+          {t("chart.lastDays", { n: data.length })}
         </span>
       </div>
       <div className="relative h-44 w-full">
