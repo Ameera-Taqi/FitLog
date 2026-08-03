@@ -71,10 +71,6 @@ export function AppShell({
 
           <div className="flex items-center gap-2 sm:gap-3">
             <PreferenceControls />
-            <Link href="/workouts/new" className="btn-primary hidden sm:inline-flex">
-              <PlusIcon className="h-4 w-4" />
-              {t("nav.newWorkout")}
-            </Link>
             <div className="group relative">
               <button className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-brand-500 to-accent-500 text-sm font-bold text-white shadow-sm">
                 {email.charAt(0).toUpperCase()}
