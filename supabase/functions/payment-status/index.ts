@@ -1,8 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Verifies a MyFatoorah payment via GetPaymentStatus. The return page passes the
 // paymentId that MyFatoorah appended to the CallBackUrl; we confirm server-side
 // rather than trusting the URL. Amount/status come straight from the gateway.
+//
+// This doubles as a webhook-free way to settle orders: since MyFatoorah's
+// authoritative status is fetched here with our API key, we also update the
+// order's payment_status (service role) when the customer returns. No portal
+// webhook registration required.
 
 const MF_TOKEN = Deno.env.get("MYFATOORAH_API_KEY");
 const MF_BASE = Deno.env.get("MYFATOORAH_BASE_URL") ?? "https://apitest.myfatoorah.com";
@@ -37,11 +43,30 @@ Deno.serve(async (req: Request) => {
     }
 
     const d = mfData.Data ?? {};
+    const reference: string | null = d.CustomerReference ?? null;
+
+    // Settle the order from the authoritative gateway status (webhook-free path).
+    let mapped: "paid" | "failed" | "expired" | null = null;
+    if (d.InvoiceStatus === "Paid") mapped = "paid";
+    else if (d.InvoiceStatus === "Expired") mapped = "expired";
+    else if (d.InvoiceStatus === "Failed") mapped = "failed";
+    if (reference && mapped) {
+      const admin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      await admin
+        .from("orders")
+        .update({ payment_status: mapped })
+        .eq("reference", reference)
+        .neq("payment_status", "paid");
+    }
+
     return json({
       status: d.InvoiceStatus ?? "Unknown",       // "Paid" | "Pending" | "Failed" | "Expired" ...
       paid: d.InvoiceStatus === "Paid",
       invoiceId: d.InvoiceId,
-      reference: d.CustomerReference ?? null,
+      reference,
       amount: d.InvoiceValue ?? null,
     });
   } catch (e) {
