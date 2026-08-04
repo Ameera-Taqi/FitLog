@@ -32,7 +32,17 @@ export function OrdersClient() {
     setOrders((data ?? []) as unknown as Order[]);
     setLoading(false);
   }, [supabase]);
-  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    load();
+    // Live status: reflect paid/failed/refunded changes on this confirmation
+    // page in real time (e.g. when the admin issues a refund).
+    const channel = supabase
+      .channel("orders-mine")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [load, supabase]);
 
   // Pay step. Guarded against double-tap: the button is disabled while in flight,
   // and the backend is idempotent (returns the same invoice URL).
@@ -94,7 +104,7 @@ export function OrdersClient() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-lg font-black text-ink-900">{formatPrice(Number(o.amount), o.currency)}</span>
-                {o.payment_status !== "paid" && (
+                {!["paid", "refunded"].includes(o.payment_status) && (
                   <button
                     type="button"
                     onClick={() => pay(o.id)}

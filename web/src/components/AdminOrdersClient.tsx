@@ -15,6 +15,7 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
   paid: "Paid",
   failed: "Failed",
   expired: "Expired",
+  refunded: "Refunded",
 };
 
 // Colour per audit source.
@@ -62,6 +63,7 @@ export function AdminOrdersClient() {
   const [live, setLive] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [events, setEvents] = useState<Record<string, PaymentEvent[]>>({});
+  const [refunding, setRefunding] = useState<string | null>(null);
   const expandedRef = useRef<string | null>(null);
 
   const load = useCallback(async () => {
@@ -106,6 +108,29 @@ export function AdminOrdersClient() {
     expandedRef.current = next;
     setExpanded(next);
     if (next) loadEvents(next);
+  }
+
+  // Refund a paid order: the edge function calls MyFatoorah's refund endpoint
+  // and flips payment_status to 'refunded'. Realtime updates the badge + history.
+  async function refund(o: AdminOrder) {
+    if (refunding) return;
+    if (!confirm(`Refund order ${o.reference} for ${formatPrice(Number(o.amount), o.currency)}? This cannot be undone.`)) return;
+    setRefunding(o.id);
+    const { data, error } = await supabase.functions.invoke("refund-order", { body: { orderId: o.id } });
+    setRefunding(null);
+    if (error || !data?.ok) {
+      let msg = "Refund failed. Please try again.";
+      try {
+        const ctx = (error as { context?: Response } | null)?.context;
+        const j = ctx ? await ctx.json() : null;
+        if (j?.message) msg = j.message;
+        else if (data?.message) msg = data.message;
+      } catch { /* keep generic */ }
+      alert(msg);
+      return;
+    }
+    load();
+    if (expandedRef.current === o.id) loadEvents(o.id);
   }
 
   const counts = ORDER_STATUSES.reduce((acc, s) => {
@@ -175,6 +200,8 @@ export function AdminOrdersClient() {
                   open={expanded === o.id}
                   events={events[o.id]}
                   onToggle={() => toggle(o.id)}
+                  onRefund={() => refund(o)}
+                  refunding={refunding === o.id}
                 />
               ))
             )}
@@ -190,11 +217,15 @@ function ExpandableRow({
   open,
   events,
   onToggle,
+  onRefund,
+  refunding,
 }: {
   order: AdminOrder;
   open: boolean;
   events: PaymentEvent[] | undefined;
   onToggle: () => void;
+  onRefund: () => void;
+  refunding: boolean;
 }) {
   return (
     <>
@@ -214,7 +245,19 @@ function ExpandableRow({
       {open && (
         <tr className="border-b border-ink-100 bg-ink-50/60">
           <td colSpan={6} className="px-6 py-4">
-            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-ink-400">Payment history</p>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-ink-400">Payment history</p>
+              {o.payment_status === "paid" && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onRefund(); }}
+                  disabled={refunding}
+                  className="rounded-full bg-violet-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-60"
+                >
+                  {refunding ? "Refunding…" : "Refund"}
+                </button>
+              )}
+            </div>
             {events === undefined ? (
               <p className="text-sm text-ink-400">Loading…</p>
             ) : events.length === 0 ? (

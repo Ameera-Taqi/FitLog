@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Linking, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter, Stack } from "expo-router";
@@ -7,7 +7,7 @@ import { theme } from "@/lib/theme";
 
 const money = (n: number, cur = "USD") => `${cur === "USD" ? "$" : cur + " "}${n.toFixed(2)}`;
 
-type PaymentStatus = "pending" | "awaiting_payment" | "paid" | "failed" | "expired";
+type PaymentStatus = "pending" | "awaiting_payment" | "paid" | "failed" | "expired" | "refunded";
 
 const STATUS: Record<PaymentStatus, { label: string; bg: string; fg: string }> = {
   pending: { label: "Pending", bg: "rgba(156,163,175,0.18)", fg: "#6b7280" },
@@ -15,6 +15,7 @@ const STATUS: Record<PaymentStatus, { label: string; bg: string; fg: string }> =
   paid: { label: "Paid", bg: "rgba(16,185,129,0.18)", fg: "#10b981" },
   failed: { label: "Failed", bg: "rgba(239,68,68,0.18)", fg: "#ef4444" },
   expired: { label: "Expired", bg: "rgba(245,158,11,0.18)", fg: "#f59e0b" },
+  refunded: { label: "Refunded", bg: "rgba(139,92,246,0.18)", fg: "#8b5cf6" },
 };
 
 interface Order {
@@ -42,6 +43,15 @@ export default function Orders() {
     setLoading(false);
   }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Live status: reflect paid/failed/refunded changes in real time.
+  useEffect(() => {
+    const channel = supabase
+      .channel("orders-mine-mobile")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [load]);
 
   // Guarded against double-tap: disabled while in flight + backend idempotency.
   async function pay(id: string) {
@@ -94,7 +104,7 @@ export default function Orders() {
                 </View>
                 <View style={s.cardBottom}>
                   <Text style={s.amount}>{money(Number(o.amount), o.currency)}</Text>
-                  {o.payment_status !== "paid" && (
+                  {!["paid", "refunded"].includes(o.payment_status) && (
                     <TouchableOpacity style={s.payBtn} onPress={() => pay(o.id)} disabled={paying !== null}>
                       {paying === o.id ? <ActivityIndicator color={theme.colors.white} size="small" /> : <Text style={s.payText}>Pay now</Text>}
                     </TouchableOpacity>

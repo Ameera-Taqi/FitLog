@@ -296,6 +296,7 @@ const en = {
       paid: "Paid",
       failed: "Failed",
       expired: "Expired",
+      refunded: "Refunded",
     },
   },
   focus: {
@@ -631,6 +632,7 @@ const ar: Dict = {
       paid: "مدفوع",
       failed: "فشل",
       expired: "منتهي الصلاحية",
+      refunded: "مُسترد",
     },
   },
   focus: {
