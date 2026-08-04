@@ -5,7 +5,8 @@ import { useFocusEffect, useRouter, Stack } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { theme } from "@/lib/theme";
 
-const money = (n: number, cur = "USD") => `${cur === "USD" ? "$" : cur + " "}${n.toFixed(2)}`;
+const money = (n: number, cur = "KWD") =>
+  cur === "KWD" ? `KWD ${n.toFixed(3)}` : `${cur === "USD" ? "$" : cur + " "}${n.toFixed(2)}`;
 
 type PaymentStatus = "pending" | "awaiting_payment" | "paid" | "failed" | "expired" | "refunded";
 

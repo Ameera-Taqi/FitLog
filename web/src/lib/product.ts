@@ -14,7 +14,9 @@ export interface Product {
   image: string | null;
 }
 
-export function formatPrice(price: number, currency = "USD"): string {
+export function formatPrice(price: number, currency = "KWD"): string {
+  // KWD is a 3-decimal currency (fils) and is what MyFatoorah actually bills.
+  if (currency === "KWD") return `KWD ${price.toFixed(3)}`;
   const symbol = currency === "USD" ? "$" : currency === "AED" ? "AED " : `${currency} `;
   return `${symbol}${price.toFixed(2)}`;
 }

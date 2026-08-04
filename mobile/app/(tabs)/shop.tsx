@@ -35,8 +35,8 @@ const PRODUCT_IMAGES: Record<string, ImageSourcePropType> = {
   "l-glutamine": require("@/assets/products/l-glutamine.png"),
 };
 
-const money = (n: number, cur = "USD") =>
-  `${cur === "USD" ? "$" : cur + " "}${n.toFixed(2)}`;
+const money = (n: number, cur = "KWD") =>
+  cur === "KWD" ? `KWD ${n.toFixed(3)}` : `${cur === "USD" ? "$" : cur + " "}${n.toFixed(2)}`;
 
 export default function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
