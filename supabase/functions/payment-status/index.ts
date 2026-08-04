@@ -51,15 +51,16 @@ Deno.serve(async (req: Request) => {
     else if (d.InvoiceStatus === "Expired") mapped = "expired";
     else if (d.InvoiceStatus === "Failed") mapped = "failed";
     if (reference && mapped) {
+      // Audited, idempotent status change (source 'return') via service role.
       const admin = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       );
-      await admin
-        .from("orders")
-        .update({ payment_status: mapped })
-        .eq("reference", reference)
-        .neq("payment_status", "paid");
+      await admin.rpc("set_order_status", {
+        p_reference: reference,
+        p_new_status: mapped,
+        p_source: "return",
+      });
     }
 
     return json({

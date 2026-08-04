@@ -85,16 +85,21 @@ Deno.serve(async (req: Request) => {
     const paymentUrl = mfData.Data.InvoiceURL as string;
     const invoiceId = String(mfData.Data.InvoiceId);
 
-    // Move the order to awaiting_payment and store invoice details (service role).
+    // Store invoice details (non-status columns), then transition the status via
+    // the audited RPC so the change is written to payment_events (source 'pay').
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
     await admin
       .from("orders")
-      .update({ payment_status: "awaiting_payment", invoice_id: invoiceId, payment_url: paymentUrl })
-      .eq("id", order.id)
-      .neq("payment_status", "paid");
+      .update({ invoice_id: invoiceId, payment_url: paymentUrl })
+      .eq("id", order.id);
+    await admin.rpc("set_order_status", {
+      p_reference: order.reference,
+      p_new_status: "awaiting_payment",
+      p_source: "pay",
+    });
 
     return json({ paymentUrl, reference: order.reference, invoiceId });
   } catch (e) {

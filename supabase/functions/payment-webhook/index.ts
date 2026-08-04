@@ -107,21 +107,22 @@ Deno.serve(async (req: Request) => {
     if (!reference) return json({ ok: false, reason: "no_reference" }, 200);
     if (!status) return json({ ok: true, reference, note: "no terminal status yet", invoiceStatus }, 200);
 
-    // Service-role write (bypasses RLS). Only flip to a terminal state and
-    // never overwrite an already-paid order.
+    // Audited, idempotent status change via service role. The RPC is a no-op if
+    // the status is unchanged (Failure 4 — webhook retries) or already paid, and
+    // records the transition in payment_events with source 'webhook'.
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const { data: updated, error } = await admin
-      .from("orders")
-      .update({ payment_status: status })
-      .eq("reference", reference)
-      .neq("payment_status", "paid")
-      .select("id, payment_status");
+    const { data: result, error } = await admin.rpc("set_order_status", {
+      p_reference: reference,
+      p_new_status: status,
+      p_source: "webhook",
+    });
     if (error) return json({ error: "db_error", message: error.message }, 500);
+    const changed = Array.isArray(result) ? result[0]?.changed : result?.changed;
 
-    return json({ ok: true, reference, status, updated: updated?.length ?? 0 });
+    return json({ ok: true, reference, status, changed: !!changed });
   } catch (e) {
     return json({ error: "exception", message: String(e) }, 500);
   }
