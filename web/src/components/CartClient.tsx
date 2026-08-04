@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import { createClient } from "@/lib/supabase/client";
 import { formatPrice, productImageSrc } from "@/lib/product";
@@ -21,6 +22,7 @@ interface CartRow {
 
 export function CartClient() {
   const { t } = useI18n();
+  const router = useRouter();
   const supabase = createClient();
   const [rows, setRows] = useState<CartRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,22 +55,23 @@ export function CartClient() {
   const currency = rows[0]?.product?.currency ?? "USD";
   const subtotal = rows.reduce((s, r) => s + (r.product ? r.product.price * r.quantity : 0), 0);
 
+  // Place the order (creates a 'pending' order + clears the cart), then send the
+  // customer to the Orders page where they tap Pay.
   async function checkout() {
     setCheckingOut(true);
     const { data, error } = await supabase.functions.invoke("checkout-cart", { body: {} });
-    if (error || !data?.paymentUrl) {
+    if (error || !data?.orderId) {
       setCheckingOut(false);
       let msg = t("shop.payError");
       try {
         const ctx = (error as { context?: Response } | null)?.context;
         const j = ctx ? await ctx.json() : null;
-        if (j?.error === "not_configured") msg = t("shop.payNotConfigured");
-        else if (j?.error === "empty_cart") msg = t("shop.emptyCart");
+        if (j?.error === "empty_cart") msg = t("shop.emptyCart");
       } catch { /* keep generic */ }
       alert(msg);
       return;
     }
-    window.location.href = data.paymentUrl as string;
+    router.push("/shop/orders");
   }
 
   return (

@@ -1,13 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Cart checkout via MyFatoorah.
+// Place an order from the cart. This is the "submit" step of the lifecycle:
+// it creates the order at payment_status = 'pending' and clears the cart. The
+// separate Pay step (initiate-payment) then moves it to 'awaiting_payment'.
+//
 // TRUST BOUNDARY: the frontend sends NOTHING about pricing. The function reads
-// the caller's cart_items (RLS-scoped by JWT), joins products for prices, and
-// computes the total server-side. The API key is a Supabase secret.
+// the caller's cart_items (RLS-scoped by JWT) and computes the total server-side.
 
-const MF_TOKEN = Deno.env.get("MYFATOORAH_API_KEY");
-const MF_BASE = Deno.env.get("MYFATOORAH_BASE_URL") ?? "https://apitest.myfatoorah.com";
 const CURRENCY = "KWD";
 
 const cors = {
@@ -23,8 +23,6 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   try {
-    if (!MF_TOKEN) return json({ error: "not_configured", message: "MYFATOORAH_API_KEY is not set." }, 500);
-
     const authHeader = req.headers.get("Authorization") ?? "";
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -45,57 +43,41 @@ Deno.serve(async (req: Request) => {
 
     type Row = { quantity: number; products: { id: string; name: string; price: number; in_stock: boolean } | null };
     const items = (rows ?? []) as unknown as Row[];
-    const invoiceItems = items
+    const lineItems = items
       .filter((r) => r.products && r.products.in_stock !== false && r.quantity > 0)
       .map((r) => ({ ItemName: r.products!.name, Quantity: r.quantity, UnitPrice: Number(r.products!.price) }));
 
-    if (invoiceItems.length === 0) return json({ error: "empty_cart", message: "Your cart is empty." }, 400);
+    if (lineItems.length === 0) return json({ error: "empty_cart", message: "Your cart is empty." }, 400);
 
-    const total = invoiceItems.reduce((s, i) => s + i.UnitPrice * i.Quantity, 0);
+    const total = lineItems.reduce((s, i) => s + i.UnitPrice * i.Quantity, 0);
     if (!(total > 0)) return json({ error: "invalid_total" }, 500);
 
-    const reference = `FITLOG-CART-${user.id.slice(0, 8)}-${Date.now()}`;
-    const origin = req.headers.get("origin") || Deno.env.get("APP_URL") || "https://web-kappa-mocha-29.vercel.app";
-    const customerName = (user.user_metadata?.display_name as string) || user.email?.split("@")[0] || "Customer";
+    const reference = `FITLOG-${user.id.slice(0, 8)}-${Date.now()}`;
 
-    const mfRes = await fetch(`${MF_BASE}/v2/SendPayment`, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${MF_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        CustomerName: customerName,
-        NotificationOption: "LNK",
-        InvoiceValue: total,
-        DisplayCurrencyIso: CURRENCY,
-        CustomerReference: reference,
-        CustomerEmail: user.email ?? undefined,
-        CallBackUrl: `${origin}/shop/return`,
-        ErrorUrl: `${origin}/shop/return`,
-        InvoiceItems: invoiceItems,
-      }),
-    });
-    const mfData = await mfRes.json().catch(() => null);
-    if (!mfRes.ok || !mfData?.IsSuccess) {
-      return json({ error: "gateway_error", status: mfRes.status, message: mfData?.Message ?? "MyFatoorah request failed", validationErrors: mfData?.ValidationErrors ?? null }, 502);
-    }
-
-    // Persist the order so the payment-webhook can look it up by reference and
-    // flip payment_status. RLS blocks client writes, so use the service role.
+    // Create the pending order with the service role (RLS blocks client writes).
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    await admin.from("orders").insert({
-      user_id: user.id,
-      reference,
-      invoice_id: String(mfData.Data.InvoiceId),
-      amount: total,
-      currency: CURRENCY,
-      items: invoiceItems,
-      payment_status: "awaiting_payment",
-    });
+    const { data: order, error: insErr } = await admin
+      .from("orders")
+      .insert({
+        user_id: user.id,
+        reference,
+        amount: total,
+        currency: CURRENCY,
+        items: lineItems,
+        payment_status: "pending",
+      })
+      .select("id, reference")
+      .single();
+    if (insErr || !order) return json({ error: "order_error", message: insErr?.message ?? "Could not create order" }, 500);
 
-    return json({ paymentUrl: mfData.Data.InvoiceURL, invoiceId: mfData.Data.InvoiceId, reference, total, currency: CURRENCY });
+    // Move the cart into the order: clear it (RLS-scoped delete).
+    await supabase.from("cart_items").delete().neq("product_id", "00000000-0000-0000-0000-000000000000");
+
+    return json({ orderId: order.id, reference: order.reference, total, currency: CURRENCY });
   } catch (e) {
-    return json({ error: "exception", message: String(e) });
+    return json({ error: "exception", message: String(e) }, 500);
   }
 });

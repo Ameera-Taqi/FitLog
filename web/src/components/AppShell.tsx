@@ -7,11 +7,14 @@ import { useI18n } from "@/lib/i18n/I18nProvider";
 import { PreferenceControls } from "./PreferenceControls";
 import { Logo } from "./Logo";
 
+const ADMIN_EMAIL = "ameera.taqi@gmail.com";
+
 const NAV = [
   { href: "/dashboard", labelKey: "nav.dashboard", icon: DashIcon },
   { href: "/workouts", labelKey: "nav.workouts", icon: ListIcon },
   { href: "/workouts/new", labelKey: "nav.log", icon: PlusIcon },
   { href: "/shop", labelKey: "nav.shop", icon: ShopIcon },
+  { href: "/shop/orders", labelKey: "nav.orders", icon: OrdersIcon },
   { href: "/profile", labelKey: "nav.profile", icon: UserIcon },
 ];
 
@@ -26,6 +29,11 @@ export function AppShell({
   const router = useRouter();
   const supabase = createClient();
   const { t } = useI18n();
+
+  // Owner-only admin link (matches the orders admin RLS policy).
+  const navItems = email === ADMIN_EMAIL
+    ? [...NAV, { href: "/admin/orders", labelKey: "nav.admin", icon: AdminIcon }]
+    : NAV;
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -49,7 +57,7 @@ export function AppShell({
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
-            {NAV.map((item) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
               return (
@@ -92,8 +100,11 @@ export function AppShell({
       <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-ink-100/80 bg-surface/95 backdrop-blur-xl md:hidden">
-        <div className="mx-auto grid max-w-lg grid-cols-4 px-1 pb-[env(safe-area-inset-bottom)]">
-          {NAV.map((item) => {
+        <div
+          className="mx-auto grid max-w-lg px-1 pb-[env(safe-area-inset-bottom)]"
+          style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}
+        >
+          {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
             return (
@@ -150,6 +161,23 @@ function ShopIcon({ className = "" }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 9h18l-1.4 9.3a2 2 0 0 1-2 1.7H6.4a2 2 0 0 1-2-1.7L3 9zM8 9V6a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+function OrdersIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 3h6a2 2 0 0 1 2 2v14l-3-2-2 2-2-2-3 2V5a2 2 0 0 1 2-2z" />
+      <path d="M9 7h6M9 11h6" />
+    </svg>
+  );
+}
+
+function AdminIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" />
     </svg>
   );
 }

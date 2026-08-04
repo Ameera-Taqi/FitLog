@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Linking, ActivityIndicator, Image, ImageSourcePropType } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Image, ImageSourcePropType } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter, Stack } from "expo-router";
 import { supabase } from "@/lib/supabase";
@@ -64,22 +64,23 @@ export default function Cart() {
   const currency = rows[0]?.product?.currency ?? "USD";
   const subtotal = rows.reduce((s, r) => s + (r.product ? r.product.price * r.quantity : 0), 0);
 
+  // Place the order (creates a 'pending' order + clears the cart), then go to
+  // the Orders screen where the customer taps Pay.
   async function checkout() {
     setCheckingOut(true);
     const { data, error } = await supabase.functions.invoke("checkout-cart", { body: {} });
     setCheckingOut(false);
-    if (error || !data?.paymentUrl) {
-      let msg = "Couldn't start checkout. Please try again.";
+    if (error || !data?.orderId) {
+      let msg = "Couldn't place your order. Please try again.";
       try {
         const ctx = (error as { context?: Response } | null)?.context;
         const j = ctx ? await ctx.json() : null;
-        if (j?.error === "not_configured") msg = "Payments aren't set up yet (MyFatoorah key missing).";
-        else if (j?.error === "empty_cart") msg = "Your cart is empty.";
+        if (j?.error === "empty_cart") msg = "Your cart is empty.";
       } catch { /* keep generic */ }
       Alert.alert("Checkout", msg);
       return;
     }
-    Linking.openURL(data.paymentUrl as string);
+    router.replace("/orders");
   }
 
   return (

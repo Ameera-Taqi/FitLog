@@ -81,7 +81,12 @@ export default function Shop() {
   return (
     <SafeAreaView style={s.safe} edges={["top"]}>
       <View style={s.header}>
-        <Text style={s.title}>Shop</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text style={s.title}>Shop</Text>
+          <TouchableOpacity onPress={() => router.push("/orders")}>
+            <Text style={s.ordersLink}>Orders →</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={s.subtitle}>Fuel your goals — nutrition & supplements.</Text>
       </View>
 
@@ -139,6 +144,7 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.bg },
   header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
   title: { fontSize: 24, fontWeight: "800", color: theme.colors.ink900 },
+  ordersLink: { color: theme.colors.brand, fontWeight: "800", fontSize: 14 },
   subtitle: { marginTop: 4, fontSize: 13, color: theme.colors.ink500 },
   cats: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: theme.radius.full, backgroundColor: theme.colors.surface2, borderWidth: 1, borderColor: theme.colors.ink200 },
